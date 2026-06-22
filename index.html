@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -104,6 +105,27 @@
       display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 10px; margin-bottom: 15px;
     }
+    .sale-form, .purchase-form {
+      grid-template-columns: minmax(220px, 1.4fr) repeat(auto-fit, minmax(130px, 1fr));
+      align-items: start;
+    }
+    .product-picker {
+      grid-row: span 2;
+    }
+    .product-picker input {
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    .product-picker select {
+      width: 100%;
+      height: 122px;
+      padding: 6px;
+    }
+    .sale-form input, .sale-form select, .sale-form button,
+    .purchase-form input, .purchase-form select, .purchase-form button {
+      min-height: 38px;
+      padding: 8px;
+    }
     input, select, button {
       padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;
     }
@@ -167,6 +189,8 @@
     .admin-only-section { display: none; }
     @media (max-width: 768px) {
       .form-group { grid-template-columns: 1fr; }
+      .sale-form, .purchase-form { grid-template-columns: 1fr; }
+      .product-picker { grid-row: auto; }
       .stats { grid-template-columns: 1fr; }
     }
     #debugPanel {
@@ -199,6 +223,9 @@
       <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
     </div>
     <button class="login-btn" onclick="login()">Login</button>
+    <div class="toggle-auth">
+      <p><a onclick="forgotPassword()">Forgot password?</a></p>
+    </div>
     <div class="toggle-auth">
       <p>Don't have an account? <a onclick="showRegister()">Register Business</a></p>
     </div>
@@ -238,6 +265,7 @@
       <button class="tab-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
       <button class="tab-btn" onclick="switchTab('products', this)">Products</button>
       <button class="tab-btn" onclick="switchTab('sales', this)">Sales</button>
+      <button class="tab-btn" onclick="switchTab('purchases', this)">Purchases</button>
       <button class="tab-btn" onclick="switchTab('expenses', this)">Expenses</button>
       <button class="tab-btn" onclick="switchTab('reports', this)">Reports</button>
       <button class="tab-btn admin-only" onclick="switchTab('users', this)">👥 Users</button>
@@ -275,10 +303,11 @@
     <div id="sales" class="tab-content">
       <div class="section">
         <h3>Make a Sale</h3>
-        <div class="form-group">
-          <input type="text" id="productSearch" placeholder="Search product..." onkeyup="filterProducts()">
-
-           <select id="productSelect" size="8" style="width:100%; margin-top:5px;"></select>
+        <div class="form-group sale-form">
+          <div class="product-picker">
+            <input type="text" id="productSearch" placeholder="Search product..." onkeyup="filterProducts()">
+            <select id="productSelect" size="5"></select>
+          </div>
           <input id="qty" type="number" placeholder="Quantity" min="1">
           <input id="customPrice" type="number" placeholder="Custom price (optional)" min="0" step="0.01">
           <input id="discount" type="number" placeholder="Discount" min="0" step="0.01" value="0">
@@ -289,25 +318,11 @@
       </div>
 	  <div class="section">
     <h3>Today's Sold Items</h3>
-    <table id="todaySalesTable">
-        <tr>
-            <th>Item</th>
-            <th>Price</th>
-            <th>Qty</th>
-            <th>Total</th>
-            <th>Payment</th>
-        </tr>
-    </table>
+    <table id="todaySoldItemsTable"></table>
 </div>
 	  <div class="section">
-    <h3>Today's Sales Summary</h3>
-    <table id="todaySalesTable">
-        <tr>
-            <th>Item</th>
-            <th>Price</th>
-            <th>Payment</th>
-        </tr>
-    </table>
+    <h3>Today's Product Summary</h3>
+    <table id="todaySalesSummaryTable"></table>
 </div>
 	  
       <div class="section">
@@ -315,6 +330,27 @@
         <table id="recentSalesTable"></table>
       </div>
       <div id="receipt"></div>
+    </div>
+
+    <div id="purchases" class="tab-content">
+      <div class="section">
+        <h3>Add Purchase</h3>
+        <div class="form-group purchase-form">
+          <div class="product-picker">
+            <input type="text" id="purchaseProductSearch" placeholder="Search product..." onkeyup="filterPurchaseProducts()">
+            <select id="purchaseProductSelect" size="5" onchange="fillPurchasePrice()"></select>
+          </div>
+          <input id="purchaseQty" type="number" placeholder="Quantity bought" min="1">
+          <input id="purchasePrice" type="number" placeholder="Buying price per item" min="0" step="0.01">
+          <input id="purchaseSupplier" placeholder="Supplier (optional)">
+          <input id="purchaseNote" placeholder="Note (optional)">
+          <button class="success" onclick="addPurchase()">Add Purchase</button>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Recent Purchases</h3>
+        <table id="purchasesTable"></table>
+      </div>
     </div>
 
     <div id="expenses" class="tab-content">
@@ -443,17 +479,19 @@ const ROLES = { ADMIN: 'admin', SALES: 'sales' };
 const PERMISSIONS = {
   [ROLES.ADMIN]: {
     canAddProducts: true, canEditProducts: true, canDeleteProducts: true,
+    canAddPurchases: true, canViewPurchases: true,
     canAddExpenses: true, canDeleteExpenses: true, canDeleteSales: true,
     canViewReports: true, canExportCSV: true, canViewAnnualReport: true,
     canManageUsers: true, canViewBuyingPrice: true,
-    tabs: ['dashboard', 'products', 'sales', 'expenses', 'reports', 'users']
+    tabs: ['dashboard', 'products', 'sales', 'purchases', 'expenses', 'reports', 'users']
   },
   [ROLES.SALES]: {
     canAddProducts: false, canEditProducts: false, canDeleteProducts: false,
+    canAddPurchases: true, canViewPurchases: true,
     canAddExpenses: false, canDeleteExpenses: false, canDeleteSales: false,
     canViewReports: false, canExportCSV: false, canViewAnnualReport: false,
     canManageUsers: false, canViewBuyingPrice: false,
-    tabs: [ 'products', 'sales', 'reports']
+    tabs: [ 'products', 'sales', 'purchases', 'reports']
   }
 };
 
@@ -464,6 +502,7 @@ let confirmAction = null;
 let editingProductId = null;
 let unsubscribeProducts = null;
 let unsubscribeSales = null;
+let unsubscribePurchases = null;
 let unsubscribeExpenses = null;
 let isInitializing = false;
 
@@ -598,6 +637,25 @@ function login() {
     });
 }
 
+function forgotPassword() {
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+
+  if (!email) {
+    showAlert('Enter your email address first, then click Forgot password.', 'warning');
+    document.getElementById('loginEmail').focus();
+    return;
+  }
+
+  auth.sendPasswordResetEmail(email)
+    .then(() => {
+      showAlert('Password reset email sent. Please check your inbox.', 'success');
+    })
+    .catch(err => {
+      debugLog('PASSWORD RESET ERROR: ' + err.code + ' | ' + err.message, 'error');
+      showAlert(err.message, 'danger');
+    });
+}
+
 function logout() {
   if (confirm('Are you sure you want to logout?')) {
     cleanupListeners();
@@ -688,7 +746,25 @@ function setupRealtimeListeners() {
     .limit(50)
     .onSnapshot(snapshot => {
       renderRecentSales(snapshot);
+      loadTodaySales();
+      loadTodaySalesSummary();
     }, err => debugLog('Sales listener error: ' + err.message, 'error'));
+
+  if (hasPermission('canViewPurchases')) {
+    unsubscribePurchases = firestoredb.collection('purchases')
+      .where('orgId', '==', orgId)
+      .orderBy('date', 'desc')
+      .limit(50)
+      .onSnapshot(snapshot => {
+        renderPurchases(snapshot);
+      }, err => {
+        debugLog('Purchases listener error: ' + err.message, 'warn');
+        const table = document.getElementById('purchasesTable');
+        if (table) {
+          table.innerHTML = '<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr><tr><td colspan="7" style="text-align:center;">Purchase log is blocked by Firebase permissions, but stock purchases can still be added.</td></tr>';
+        }
+      });
+  }
 
   unsubscribeExpenses = firestoredb.collection('expenses')
     .where('orgId', '==', orgId)
@@ -701,6 +777,7 @@ function setupRealtimeListeners() {
 function cleanupListeners() {
   if (unsubscribeProducts) { unsubscribeProducts(); unsubscribeProducts = null; }
   if (unsubscribeSales) { unsubscribeSales(); unsubscribeSales = null; }
+  if (unsubscribePurchases) { unsubscribePurchases(); unsubscribePurchases = null; }
   if (unsubscribeExpenses) { unsubscribeExpenses(); unsubscribeExpenses = null; }
 }
 
@@ -753,9 +830,18 @@ function switchTab(tabName, btnElement) {
   const tab = document.getElementById(tabName);
   if (tab) tab.classList.add('active');
   if (btnElement) btnElement.classList.add('active');
-  if (tabName === 'sales') loadTodaySalesSummary();
+  if (tabName === 'sales') {
+    loadTodaySales();
+    loadTodaySalesSummary();
+}
 
   if (tabName === 'dashboard') updateDashboard();
+  if (tabName === 'purchases' && hasPermission('canViewPurchases')) {
+    filterPurchaseProducts();
+    if (document.getElementById('purchasesTable').innerHTML.trim() === '') {
+      document.getElementById('purchasesTable').innerHTML = '<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr><tr><td colspan="7" style="text-align:center;">No purchases yet</td></tr>';
+    }
+  }
   if (tabName === 'users' && hasPermission('canManageUsers')) loadUsers();
 }
 
@@ -937,6 +1023,7 @@ let allProducts = [];
 function renderProducts(snapshot) {
   const stockTable = document.getElementById('stockTable');
   const productSelect = document.getElementById('productSelect');
+  const purchaseProductSelect = document.getElementById('purchaseProductSelect');
 
   allProducts = [];
 
@@ -955,7 +1042,9 @@ function renderProducts(snapshot) {
     allProducts.push({
       id: doc.id,
       name: p.name,
-      stock: p.stock || 0
+      stock: p.stock || 0,
+      buy: p.buy || 0,
+      sell: p.sell || 0
     });
 
     tableHTML += `
@@ -972,10 +1061,12 @@ function renderProducts(snapshot) {
   });
 
   stockTable.innerHTML = tableHTML;
-  productSelect.innerHTML = selectHTML;
+  productSelect.innerHTML = `<option value="">Select Product</option>` + selectHTML;
+  if (purchaseProductSelect) {
+    purchaseProductSelect.innerHTML = `<option value="">Select Product</option>` + selectHTML;
+  }
 }
-
-function filterProducts() {
+ function filterProducts() {
   const search = document
     .getElementById('productSearch')
     .value
@@ -983,7 +1074,7 @@ function filterProducts() {
 
   const productSelect = document.getElementById('productSelect');
 
-  let html = '';
+  let html = '<option value="">Select Product</option>';
 
   allProducts.forEach(product => {
     if (product.name.toLowerCase().includes(search)) {
@@ -995,6 +1086,38 @@ function filterProducts() {
   });
 
   productSelect.innerHTML = html;
+}
+
+function filterPurchaseProducts() {
+  const search = document
+    .getElementById('purchaseProductSearch')
+    .value
+    .toLowerCase();
+
+  const productSelect = document.getElementById('purchaseProductSelect');
+
+  let html = '<option value="">Select Product</option>';
+
+  allProducts.forEach(product => {
+    if (product.name.toLowerCase().includes(search)) {
+      html += `
+      <option value="${product.id}">
+        ${product.name} (Stock: ${product.stock})
+      </option>`;
+    }
+  });
+
+  productSelect.innerHTML = html;
+}
+
+function fillPurchasePrice() {
+  const productId = document.getElementById('purchaseProductSelect').value;
+  const priceInput = document.getElementById('purchasePrice');
+  const product = allProducts.find(item => item.id === productId);
+
+  if (product && (!priceInput.value || parseFloat(priceInput.value) <= 0)) {
+    priceInput.value = product.buy || '';
+  }
 }
 
 // ============= SALES =============
@@ -1044,7 +1167,7 @@ function loadTodaySales() {
 
     if (!currentUser || !currentUser.orgId) return;
 
-    const table = document.getElementById("todaySalesTable");
+      const table = document.getElementById("todaySoldItemsTable");
 
     const today = new Date().toDateString();
 
@@ -1081,11 +1204,11 @@ function loadTodaySales() {
 
                 html += `
                 <tr>
-                    <td>${sale.product}</td>
+                    <td>${sale.product || 'N/A'}</td>
                     <td>${formatCurrency(sale.unitPrice)}</td>
-                    <td>${sale.qty}</td>
+                    <td>${sale.qty || 0}</td>
                     <td>${formatCurrency(sale.total)}</td>
-                    <td>${sale.payment}</td>
+                    <td>${sale.payment || 'N/A'}</td>
                 </tr>`;
             }
 
@@ -1156,11 +1279,90 @@ function deleteSale(saleId, productId, qty) {
   document.getElementById('confirmMessage').textContent = 'Delete this sale? Stock will be restored.';
   document.getElementById('confirmModal').classList.add('active');
 }
+
+// ============= PURCHASES =============
+function addPurchase() {
+  if (!checkPermission('canAddPurchases', 'Add purchase')) return;
+  if (!currentUser || !currentUser.orgId) return;
+
+  const productId = document.getElementById('purchaseProductSelect').value;
+  const qty = parseInt(document.getElementById('purchaseQty').value);
+  const unitCost = parseFloat(document.getElementById('purchasePrice').value);
+  const supplier = document.getElementById('purchaseSupplier').value.trim() || 'N/A';
+  const note = document.getElementById('purchaseNote').value.trim();
+
+  if (!productId) { showAlert('Select product for purchase', 'danger'); return; }
+  if (isNaN(qty) || qty < 1) { showAlert('Enter valid purchase quantity', 'danger'); return; }
+  if (isNaN(unitCost) || unitCost < 0) { showAlert('Enter valid buying price', 'danger'); return; }
+
+  const productRef = firestoredb.collection('products').doc(productId);
+
+  productRef.get().then(doc => {
+    if (!doc.exists) { throw new Error('Product not found'); }
+
+    const product = doc.data();
+    const totalCost = qty * unitCost;
+    const purchaseLog = {
+      product: product.name || 'N/A',
+      productId,
+      qty,
+      unitCost,
+      totalCost,
+      supplier,
+      note,
+      orgId: currentUser.orgId,
+      recordedBy: currentUser.user,
+      date: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    return productRef.update({
+      stock: (product.stock || 0) + qty,
+      buy: unitCost,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+      return firestoredb.collection('purchases').add(purchaseLog)
+        .then(() => ({ logSaved: true }))
+        .catch(err => {
+          debugLog('Purchase log not saved: ' + err.message, 'warn');
+          return { logSaved: false };
+        });
+    });
+  }).then(result => {
+    clearForm(['purchaseQty', 'purchasePrice', 'purchaseSupplier', 'purchaseNote']);
+    document.getElementById('purchaseProductSelect').value = '';
+    updateDashboard();
+    if (result && result.logSaved === false) {
+      showAlert('Stock updated. Purchase log was blocked by Firebase permissions.', 'warning');
+    } else {
+      showAlert('Purchase added and stock updated!', 'success');
+    }
+  }).catch(err => showAlert(err.message, 'danger'));
+}
+
+function renderPurchases(snapshot) {
+  const table = document.getElementById('purchasesTable');
+  if (!table) return;
+
+  let html = `<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr>`;
+
+  if (snapshot.size === 0) {
+    html += `<tr><td colspan="7" style="text-align:center;">No purchases yet</td></tr>`;
+  } else {
+    snapshot.forEach(doc => {
+      const p = doc.data();
+      const dateStr = p.date ? formatDate(p.date.toDate ? p.date.toDate() : p.date) : 'N/A';
+      html += `<tr><td>${dateStr}</td><td>${p.product || 'N/A'}</td><td>${p.qty || 0}</td><td>${formatCurrency(p.unitCost)}</td><td>${formatCurrency(p.totalCost)}</td><td>${p.supplier || 'N/A'}</td><td>${p.recordedBy || 'N/A'}</td></tr>`;
+    });
+  }
+
+  table.innerHTML = html;
+}
      function loadTodaySalesSummary() {
 
     if (!currentUser || !currentUser.orgId) return;
 
-    const table = document.getElementById('todaySalesTable');
+    const table = document.getElementById('todaySalesSummaryTable');
+    if (!table) return;
 
     firestoredb.collection('sales')
         .where('orgId', '==', currentUser.orgId)
@@ -1171,14 +1373,17 @@ function deleteSale(saleId, productId, qty) {
 
             let html = `
             <tr>
-                <th>Item</th>
-                <th>Price</th>
-                <th>Payment</th>
+                <th>Product</th>
+                <th>Total Qty</th>
+                <th>Avg Price</th>
+                <th>Total Sales</th>
+                <th>Payments</th>
             </tr>`;
 
             const today = new Date().toDateString();
-            let count = 0;
-            let total = 0;
+            const summary = {};
+            let totalQty = 0;
+            let totalSales = 0;
 
             snapshot.forEach(doc => {
 
@@ -1186,26 +1391,60 @@ function deleteSale(saleId, productId, qty) {
 
                 if (!sale.date) return;
 
-                const saleDate = sale.date.toDate().toDateString();
+                const saleDate = (sale.date.toDate ? sale.date.toDate() : new Date(sale.date)).toDateString();
 
                 if (saleDate === today) {
 
-                    count++;
-                    total += sale.total || 0;
+                    const product = sale.product || 'N/A';
+                    const qty = sale.qty || 0;
+                    const saleTotal = sale.total || 0;
+                    const payment = sale.payment || 'N/A';
 
-                    html += `
-                    <tr>
-                        <td>${sale.product}</td>
-                        <td>${formatCurrency(sale.total)}</td>
-                        <td>${sale.payment}</td>
-                    </tr>`;
+                    if (!summary[product]) {
+                        summary[product] = {
+                            qty: 0,
+                            total: 0,
+                            payments: new Set()
+                        };
+                    }
+
+                    summary[product].qty += qty;
+                    summary[product].total += saleTotal;
+                    summary[product].payments.add(payment);
+                    totalQty += qty;
+                    totalSales += saleTotal;
                 }
             });
 
+            const productNames = Object.keys(summary).sort();
+
+            if (productNames.length === 0) {
+                html += `
+                    <tr>
+                        <td colspan="5" style="text-align:center">No sales today</td>
+                    </tr>`;
+            } else {
+                productNames.forEach(product => {
+                    const item = summary[product];
+                    const avgPrice = item.qty > 0 ? item.total / item.qty : 0;
+
+                    html += `
+                    <tr>
+                        <td>${product}</td>
+                        <td>${item.qty}</td>
+                        <td>${formatCurrency(avgPrice)}</td>
+                        <td>${formatCurrency(item.total)}</td>
+                        <td>${Array.from(item.payments).join(', ')}</td>
+                    </tr>`;
+                });
+            }
+
             html += `
             <tr style="font-weight:bold;background:#f0f0f0;">
-                <td>Total Items Sold: ${count}</td>
-                <td>${formatCurrency(total)}</td>
+                <td>Total</td>
+                <td>${totalQty}</td>
+                <td>-</td>
+                <td>${formatCurrency(totalSales)}</td>
                 <td>-</td>
             </tr>`;
 
