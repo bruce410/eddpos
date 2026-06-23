@@ -32,7 +32,7 @@
     .header p { font-size: 14px; opacity: 0.9; }
 
     /* LOGIN & REGISTER */
-    #login, #register {
+    #login, #register, #resetPasswordPage {
       max-width: 400px;
       margin: 40px auto;
       padding: 30px;
@@ -40,7 +40,7 @@
       border-radius: 10px;
       box-shadow: 0 5px 20px rgba(0,0,0,0.1);
     }
-    #login h3, #register h3 { margin-bottom: 20px; color: #333; text-align: center; }
+    #login h3, #register h3, #resetPasswordPage h3 { margin-bottom: 20px; color: #333; text-align: center; }
     .login-group { margin-bottom: 15px; }
     .login-group input {
       width: 100%; padding: 10px; border: 1px solid #ddd;
@@ -59,6 +59,8 @@
     .login-btn:hover { background: #764ba2; }
     .toggle-auth { text-align: center; margin-top: 15px; }
     .toggle-auth a { color: #667eea; cursor: pointer; text-decoration: underline; }
+    .forgot-password { text-align: right; margin-top: -5px; margin-bottom: 12px; font-size: 13px; }
+    .forgot-password a { color: #667eea; cursor: pointer; text-decoration: underline; }
 
     /* DEBUG PANEL */
     #debugPanel {
@@ -105,27 +107,11 @@
       display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 10px; margin-bottom: 15px;
     }
-    .sale-form, .purchase-form {
-      grid-template-columns: minmax(220px, 1.4fr) repeat(auto-fit, minmax(130px, 1fr));
-      align-items: start;
+    .toolbar {
+      display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;
     }
-    .product-picker {
-      grid-row: span 2;
-    }
-    .product-picker input {
-      width: 100%;
-      margin-bottom: 6px;
-    }
-    .product-picker select {
-      width: 100%;
-      height: 122px;
-      padding: 6px;
-    }
-    .sale-form input, .sale-form select, .sale-form button,
-    .purchase-form input, .purchase-form select, .purchase-form button {
-      min-height: 38px;
-      padding: 8px;
-    }
+    .toolbar input { flex: 1; min-width: 220px; }
+    .table-note { color: #666; font-size: 13px; margin-top: 8px; }
     input, select, button {
       padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;
     }
@@ -189,9 +175,8 @@
     .admin-only-section { display: none; }
     @media (max-width: 768px) {
       .form-group { grid-template-columns: 1fr; }
-      .sale-form, .purchase-form { grid-template-columns: 1fr; }
-      .product-picker { grid-row: auto; }
       .stats { grid-template-columns: 1fr; }
+      .toolbar input { min-width: 100%; }
     }
     #debugPanel {
   display: none;
@@ -212,6 +197,7 @@
     <div style="color:#fff; font-weight:bold; margin-bottom:10px;"> DEBUG LOG</div>
     <div id="debugLogs"></div>
   </div>
+  <div id="alertBox"></div>
 
   <!-- LOGIN -->
   <div id="login">
@@ -222,12 +208,35 @@
     <div class="login-group">
       <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
     </div>
+    <div class="forgot-password">
+      <a onclick="resetPassword()">Forgot password?</a>
+    </div>
     <button class="login-btn" onclick="login()">Login</button>
     <div class="toggle-auth">
-      <p><a onclick="forgotPassword()">Forgot password?</a></p>
-    </div>
-    <div class="toggle-auth">
+      <p><a onclick="showResetPassword()">Enter reset code</a></p>
       <p>Don't have an account? <a onclick="showRegister()">Register Business</a></p>
+    </div>
+  </div>
+
+  <!-- RESET PASSWORD -->
+  <div id="resetPasswordPage" style="display:none;">
+    <h3>Reset Password</h3>
+    <div class="login-group">
+      <input id="resetEmail" type="email" placeholder="Email address" autocomplete="email">
+    </div>
+    <button class="login-btn" onclick="sendResetCode()">Send Reset Email</button>
+    <div class="login-group" style="margin-top:20px;">
+      <input id="resetCode" placeholder="Reset code from email">
+    </div>
+    <div class="login-group">
+      <input id="newResetPassword" type="password" placeholder="New password" autocomplete="new-password">
+    </div>
+    <div class="login-group">
+      <input id="confirmResetPassword" type="password" placeholder="Confirm new password" autocomplete="new-password">
+    </div>
+    <button class="login-btn" onclick="confirmPasswordReset()">Reset Password</button>
+    <div class="toggle-auth">
+      <p><a onclick="showLogin()">Back to Login</a></p>
     </div>
   </div>
 
@@ -259,13 +268,12 @@
       </div>
       <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
-    <div id="alertBox"></div>
 
     <div class="tabs" id="mainTabs">
       <button class="tab-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
       <button class="tab-btn" onclick="switchTab('products', this)">Products</button>
-      <button class="tab-btn" onclick="switchTab('sales', this)">Sales</button>
       <button class="tab-btn" onclick="switchTab('purchases', this)">Purchases</button>
+      <button class="tab-btn" onclick="switchTab('sales', this)">Sales</button>
       <button class="tab-btn" onclick="switchTab('expenses', this)">Expenses</button>
       <button class="tab-btn" onclick="switchTab('reports', this)">Reports</button>
       <button class="tab-btn admin-only" onclick="switchTab('users', this)">👥 Users</button>
@@ -277,6 +285,7 @@
         <div class="stats">
           <div class="stat-card"><h4>Total Products</h4><div class="value" id="totalProducts">0</div></div>
           <div class="stat-card"><h4>Total Stock Value</h4><div class="value" id="totalStockValue">KES 0</div></div>
+          <div class="stat-card"><h4>Products Sold Today</h4><div class="value" id="todayProductsSold">0</div></div>
           <div class="stat-card"><h4>Today's Sales</h4><div class="value" id="todaySales">KES 0</div></div>
           <div class="stat-card"><h4>Today's Profit</h4><div class="value" id="todayProfit">KES 0</div></div>
         </div>
@@ -296,18 +305,41 @@
       </div>
       <div class="section">
         <h3>Product Stock</h3>
+        <div class="toolbar">
+          <input id="productSearch" type="search" placeholder="Search products..." oninput="filterProducts()">
+          <button onclick="clearProductSearch()">Clear</button>
+        </div>
         <table id="stockTable"></table>
+        <div id="productSearchNote" class="table-note"></div>
+      </div>
+    </div>
+
+    <div id="purchases" class="tab-content">
+      <div class="section admin-only-section">
+        <h3>Record Purchase</h3>
+        <div class="form-group">
+          <select id="purchaseProductSelect"></select>
+          <input id="purchaseQty" type="number" placeholder="Quantity bought" min="1">
+          <input id="purchaseCost" type="number" placeholder="Buying price per item" min="0" step="0.01">
+          <input id="supplier" placeholder="Supplier name (optional)">
+          <button class="success" onclick="addPurchase()">Save Purchase</button>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Purchase Log</h3>
+        <table id="purchasesTable"></table>
       </div>
     </div>
 
     <div id="sales" class="tab-content">
       <div class="section">
         <h3>Make a Sale</h3>
-        <div class="form-group sale-form">
-          <div class="product-picker">
-            <input type="text" id="productSearch" placeholder="Search product..." onkeyup="filterProducts()">
-            <select id="productSelect" size="5"></select>
-          </div>
+        <div class="toolbar">
+          <input id="salesProductSearch" type="search" placeholder="Search product to sell..." oninput="filterSalesProducts()">
+          <button onclick="clearSalesProductSearch()">Clear</button>
+        </div>
+        <div class="form-group">
+          <select id="productSelect"></select>
           <input id="qty" type="number" placeholder="Quantity" min="1">
           <input id="customPrice" type="number" placeholder="Custom price (optional)" min="0" step="0.01">
           <input id="discount" type="number" placeholder="Discount" min="0" step="0.01" value="0">
@@ -315,42 +347,17 @@
           <select id="payment"><option>Cash</option><option>M-Pesa</option><option>Cheque</option><option>Credit</option></select>
           <button class="success" onclick="sell()">Complete Sale</button>
         </div>
+        <div id="salesProductSearchNote" class="table-note"></div>
       </div>
-	  <div class="section">
-    <h3>Today's Sold Items</h3>
-    <table id="todaySoldItemsTable"></table>
-</div>
-	  <div class="section">
-    <h3>Today's Product Summary</h3>
-    <table id="todaySalesSummaryTable"></table>
-</div>
-	  
       <div class="section">
         <h3>Recent Sales</h3>
         <table id="recentSalesTable"></table>
       </div>
+      <div class="section">
+        <h3>Products Sold Today</h3>
+        <table id="todaySoldTable"></table>
+      </div>
       <div id="receipt"></div>
-    </div>
-
-    <div id="purchases" class="tab-content">
-      <div class="section">
-        <h3>Add Purchase</h3>
-        <div class="form-group purchase-form">
-          <div class="product-picker">
-            <input type="text" id="purchaseProductSearch" placeholder="Search product..." onkeyup="filterPurchaseProducts()">
-            <select id="purchaseProductSelect" size="5" onchange="fillPurchasePrice()"></select>
-          </div>
-          <input id="purchaseQty" type="number" placeholder="Quantity bought" min="1">
-          <input id="purchasePrice" type="number" placeholder="Buying price per item" min="0" step="0.01">
-          <input id="purchaseSupplier" placeholder="Supplier (optional)">
-          <input id="purchaseNote" placeholder="Note (optional)">
-          <button class="success" onclick="addPurchase()">Add Purchase</button>
-        </div>
-      </div>
-      <div class="section">
-        <h3>Recent Purchases</h3>
-        <table id="purchasesTable"></table>
-      </div>
     </div>
 
     <div id="expenses" class="tab-content">
@@ -479,19 +486,19 @@ const ROLES = { ADMIN: 'admin', SALES: 'sales' };
 const PERMISSIONS = {
   [ROLES.ADMIN]: {
     canAddProducts: true, canEditProducts: true, canDeleteProducts: true,
-    canAddPurchases: true, canViewPurchases: true,
     canAddExpenses: true, canDeleteExpenses: true, canDeleteSales: true,
+    canRecordPurchases: true, canDeletePurchases: true,
     canViewReports: true, canExportCSV: true, canViewAnnualReport: true,
     canManageUsers: true, canViewBuyingPrice: true,
-    tabs: ['dashboard', 'products', 'sales', 'purchases', 'expenses', 'reports', 'users']
+    tabs: ['dashboard', 'products', 'purchases', 'sales', 'expenses', 'reports', 'users']
   },
   [ROLES.SALES]: {
     canAddProducts: false, canEditProducts: false, canDeleteProducts: false,
-    canAddPurchases: true, canViewPurchases: true,
     canAddExpenses: false, canDeleteExpenses: false, canDeleteSales: false,
+    canRecordPurchases: false, canDeletePurchases: false,
     canViewReports: false, canExportCSV: false, canViewAnnualReport: false,
     canManageUsers: false, canViewBuyingPrice: false,
-    tabs: [ 'products', 'sales', 'purchases', 'reports']
+    tabs: [ 'products', 'sales', 'reports']
   }
 };
 
@@ -505,6 +512,7 @@ let unsubscribeSales = null;
 let unsubscribePurchases = null;
 let unsubscribeExpenses = null;
 let isInitializing = false;
+let latestProducts = [];
 
 // ============= UTILITIES =============
 function showAlert(message, type = 'success') {
@@ -528,22 +536,55 @@ function formatDate(date) {
   return date.toLocaleDateString('en-KE') + ' ' + date.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
 }
 
+function getSaleDate(value) {
+  if (!value) return null;
+  if (value.toDate) return value.toDate();
+  const date = new Date(value);
+  return isNaN(date) ? null : date;
+}
+
+function isToday(value) {
+  const date = getSaleDate(value);
+  return date && date.toDateString() === new Date().toDateString();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char]));
+}
+
+function escapeJsString(value) {
+  return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, ' ');
+}
+
 // ============= NAVIGATION =============
 function showLogin() {
   document.getElementById('login').style.display = 'block';
   document.getElementById('Register').style.display = 'none';
+  document.getElementById('resetPasswordPage').style.display = 'none';
   document.getElementById('app').style.display = 'none';
 }
 
 function showRegister() {
   document.getElementById('login').style.display = 'none';
   document.getElementById('Register').style.display = 'block';
+  document.getElementById('resetPasswordPage').style.display = 'none';
   document.getElementById('app').style.display = 'none';
+}
+
+function showResetPassword(code = '') {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('Register').style.display = 'none';
+  document.getElementById('resetPasswordPage').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+  if (code) document.getElementById('resetCode').value = code;
 }
 
 function showApp() {
   document.getElementById('login').style.display = 'none';
   document.getElementById('Register').style.display = 'none';
+  document.getElementById('resetPasswordPage').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 }
 
@@ -637,23 +678,96 @@ function login() {
     });
 }
 
-function forgotPassword() {
+function getResetCodeFromUrl() {
+  const hash = window.location.hash || '';
+  const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?')) : hash.replace(/^#/, '?');
+  const sources = [window.location.search, hashQuery];
+  for (const source of sources) {
+    const params = new URLSearchParams(source);
+    const mode = params.get('mode');
+    const code = params.get('oobCode') || params.get('code');
+    if (code && (!mode || mode === 'resetPassword')) return code;
+  }
+  return '';
+}
+
+function isPasswordResetRoute() {
+  return Boolean(getResetCodeFromUrl());
+}
+
+function getResetActionSettings() {
+  if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+    return { url: window.location.href.split('?')[0].split('#')[0], handleCodeInApp: true };
+  }
+  return undefined;
+}
+
+function resetPassword() {
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  document.getElementById('resetEmail').value = email;
+  showResetPassword();
+  if (email) sendResetCode();
+}
+
+function sendResetCode() {
+  const email = document.getElementById('resetEmail').value.trim().toLowerCase();
 
   if (!email) {
-    showAlert('Enter your email address first, then click Forgot password.', 'warning');
-    document.getElementById('loginEmail').focus();
+    showAlert('Enter your email address first.', 'warning');
+    document.getElementById('resetEmail').focus();
     return;
   }
 
-  auth.sendPasswordResetEmail(email)
+  auth.sendPasswordResetEmail(email, getResetActionSettings())
     .then(() => {
-      showAlert('Password reset email sent. Please check your inbox.', 'success');
+      showAlert('Reset email sent. Open the link or copy the reset code into this page.', 'success');
+      debugLog('Password reset email sent to ' + email, 'success');
     })
     .catch(err => {
       debugLog('PASSWORD RESET ERROR: ' + err.code + ' | ' + err.message, 'error');
       showAlert(err.message, 'danger');
     });
+}
+
+async function confirmPasswordReset() {
+  const code = document.getElementById('resetCode').value.trim();
+  const newPassword = document.getElementById('newResetPassword').value;
+  const confirmPassword = document.getElementById('confirmResetPassword').value;
+
+  if (!code) {
+    showAlert('Enter the reset code from your email.', 'warning');
+    document.getElementById('resetCode').focus();
+    return;
+  }
+
+  if (!newPassword || !confirmPassword) {
+    showAlert('Enter and confirm the new password.', 'warning');
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    showAlert('Password must be at least 6 characters.', 'warning');
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    showAlert('Passwords do not match.', 'danger');
+    return;
+  }
+
+  try {
+    await auth.verifyPasswordResetCode(code);
+    await auth.confirmPasswordReset(code, newPassword);
+    clearForm(['resetEmail', 'resetCode', 'newResetPassword', 'confirmResetPassword']);
+    showLogin();
+    showAlert('Password reset successful. You can login now.', 'success');
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, document.title, window.location.href.split('?')[0].split('#')[0]);
+    }
+  } catch (err) {
+    debugLog('CONFIRM PASSWORD RESET ERROR: ' + err.code + ' | ' + err.message, 'error');
+    showAlert(err.message, 'danger');
+  }
 }
 
 function logout() {
@@ -673,6 +787,15 @@ function logout() {
 // THIS IS THE SINGLE SOURCE OF TRUTH FOR AUTH STATE
 auth.onAuthStateChanged(user => {
   debugLog('=== onAuthStateChanged === User: ' + (user ? user.email : 'null'));
+
+  if (isPasswordResetRoute()) {
+    cleanupListeners();
+    currentUser = null;
+    currentOrg = null;
+    showResetPassword(getResetCodeFromUrl());
+    if (user) auth.signOut();
+    return;
+  }
 
   if (isInitializing) {
     debugLog('Already initializing, skipping...', 'warn');
@@ -738,33 +861,24 @@ function setupRealtimeListeners() {
     .where('orgId', '==', orgId)
     .onSnapshot(snapshot => {
       renderProducts(snapshot);
+      updateProductDashboard(snapshot);
     }, err => debugLog('Products listener error: ' + err.message, 'error'));
 
   unsubscribeSales = firestoredb.collection('sales')
     .where('orgId', '==', orgId)
     .orderBy('date', 'desc')
-    .limit(50)
     .onSnapshot(snapshot => {
       renderRecentSales(snapshot);
-      loadTodaySales();
-      loadTodaySalesSummary();
+      renderTodaysSoldProducts(snapshot);
+      updateSalesDashboard(snapshot);
     }, err => debugLog('Sales listener error: ' + err.message, 'error'));
 
-  if (hasPermission('canViewPurchases')) {
-    unsubscribePurchases = firestoredb.collection('purchases')
-      .where('orgId', '==', orgId)
-      .orderBy('date', 'desc')
-      .limit(50)
-      .onSnapshot(snapshot => {
-        renderPurchases(snapshot);
-      }, err => {
-        debugLog('Purchases listener error: ' + err.message, 'warn');
-        const table = document.getElementById('purchasesTable');
-        if (table) {
-          table.innerHTML = '<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr><tr><td colspan="7" style="text-align:center;">Purchase log is blocked by Firebase permissions, but stock purchases can still be added.</td></tr>';
-        }
-      });
-  }
+  unsubscribePurchases = firestoredb.collection('purchases')
+    .where('orgId', '==', orgId)
+    .orderBy('date', 'desc')
+    .onSnapshot(snapshot => {
+      renderPurchases(snapshot);
+    }, err => debugLog('Purchases listener error: ' + err.message, 'error'));
 
   unsubscribeExpenses = firestoredb.collection('expenses')
     .where('orgId', '==', orgId)
@@ -802,7 +916,7 @@ function applyRoleBasedUI() {
   });
 
   document.querySelectorAll('.admin-only-section').forEach(el => {
-    el.style.display = perms.canAddProducts || perms.canAddExpenses ? 'block' : 'none';
+    el.style.display = perms.canAddProducts || perms.canAddExpenses || perms.canRecordPurchases ? 'block' : 'none';
   });
 
   document.querySelectorAll('.admin-only-btn').forEach(el => {
@@ -830,45 +944,46 @@ function switchTab(tabName, btnElement) {
   const tab = document.getElementById(tabName);
   if (tab) tab.classList.add('active');
   if (btnElement) btnElement.classList.add('active');
-  if (tabName === 'sales') {
-    loadTodaySales();
-    loadTodaySalesSummary();
-}
-
   if (tabName === 'dashboard') updateDashboard();
-  if (tabName === 'purchases' && hasPermission('canViewPurchases')) {
-    filterPurchaseProducts();
-    if (document.getElementById('purchasesTable').innerHTML.trim() === '') {
-      document.getElementById('purchasesTable').innerHTML = '<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr><tr><td colspan="7" style="text-align:center;">No purchases yet</td></tr>';
-    }
-  }
   if (tabName === 'users' && hasPermission('canManageUsers')) loadUsers();
 }
 
 function updateDashboard() {
   if (!currentUser || !currentUser.orgId) return;
-  let totalProducts = 0, stockValue = 0, todaySales = 0, todayProfit = 0;
-  const today = new Date().toDateString();
   const orgId = currentUser.orgId;
 
   firestoredb.collection('products').where('orgId', '==', orgId).get()
-    .then(snapshot => {
-      totalProducts = snapshot.size;
-      snapshot.forEach(doc => { const p = doc.data(); stockValue += (p.buy || 0) * (p.stock || 0); });
-      document.getElementById('totalProducts').textContent = totalProducts;
-      document.getElementById('totalStockValue').textContent = formatCurrency(stockValue);
-    }).catch(err => debugLog('Dashboard products error: ' + err.message, 'error'));
+    .then(updateProductDashboard)
+    .catch(err => debugLog('Dashboard products error: ' + err.message, 'error'));
 
   firestoredb.collection('sales').where('orgId', '==', orgId).get()
-    .then(snapshot => {
-      snapshot.forEach(doc => {
-        const s = doc.data();
-        const saleDate = s.date ? new Date(s.date.toDate ? s.date.toDate() : s.date).toDateString() : '';
-        if (saleDate === today) { todaySales += s.total || 0; todayProfit += s.profit || 0; }
-      });
-      document.getElementById('todaySales').textContent = formatCurrency(todaySales);
-      document.getElementById('todayProfit').textContent = formatCurrency(todayProfit);
-    }).catch(err => debugLog('Dashboard sales error: ' + err.message, 'error'));
+    .then(updateSalesDashboard)
+    .catch(err => debugLog('Dashboard sales error: ' + err.message, 'error'));
+}
+
+function updateProductDashboard(snapshot) {
+  let stockValue = 0;
+  snapshot.forEach(doc => {
+    const p = doc.data();
+    stockValue += (p.buy || 0) * (p.stock || 0);
+  });
+  document.getElementById('totalProducts').textContent = snapshot.size;
+  document.getElementById('totalStockValue').textContent = formatCurrency(stockValue);
+}
+
+function updateSalesDashboard(snapshot) {
+  let todaySales = 0, todayProfit = 0, todayProductsSold = 0;
+  snapshot.forEach(doc => {
+    const s = doc.data();
+    if (isToday(s.date)) {
+      todaySales += s.total || 0;
+      todayProfit += s.profit || 0;
+      todayProductsSold += s.qty || 0;
+    }
+  });
+  document.getElementById('todayProductsSold').textContent = todayProductsSold;
+  document.getElementById('todaySales').textContent = formatCurrency(todaySales);
+  document.getElementById('todayProfit').textContent = formatCurrency(todayProfit);
 }
 
 // ============= USER MANAGEMENT =============
@@ -959,24 +1074,80 @@ function addProduct() {
 function renderProducts(snapshot) {
   const stockTable = document.getElementById('stockTable');
   const productSelect = document.getElementById('productSelect');
+  const purchaseProductSelect = document.getElementById('purchaseProductSelect');
   const perms = PERMISSIONS[currentUser.role] || PERMISSIONS[ROLES.SALES];
+  const searchTerm = (document.getElementById('productSearch')?.value || '').trim().toLowerCase();
+  const salesSearchTerm = (document.getElementById('salesProductSearch')?.value || '').trim().toLowerCase();
+  const selectedSaleProduct = productSelect ? productSelect.value : '';
+  const selectedPurchaseProduct = purchaseProductSelect ? purchaseProductSelect.value : '';
 
   let tableHTML = `<tr><th>Name</th>${perms.canViewBuyingPrice ? '<th>Buy</th>' : ''}<th>Sell</th><th>Stock</th>${perms.canEditProducts || perms.canDeleteProducts ? '<th>Actions</th>' : ''}</tr>`;
   let selectHTML = `<option value="">Select Product</option>`;
+  let purchaseSelectHTML = `<option value="">Select Product</option>`;
+  latestProducts = [];
 
   snapshot.forEach(doc => {
-    const p = doc.data(), docId = doc.id;
-    tableHTML += `<tr><td>${p.name || 'N/A'}</td>${perms.canViewBuyingPrice ? `<td>${formatCurrency(p.buy)}</td>` : ''}<td>${formatCurrency(p.sell)}</td><td>${p.stock || 0}</td>${perms.canEditProducts || perms.canDeleteProducts ? `<td>${perms.canEditProducts ? `<button class="action-btn edit-btn" onclick="editProduct('${docId}', '${p.name}', ${p.buy}, ${p.sell}, ${p.stock})">Edit</button>` : ''}${perms.canDeleteProducts ? `<button class="action-btn delete-btn" onclick="deleteProduct('${docId}', '${p.name}')">Delete</button>` : ''}</td>` : ''}</tr>`;
-    selectHTML += `<option value="${docId}">${p.name} (Stock: ${p.stock || 0})</option>`;
+    latestProducts.push({ id: doc.id, ...doc.data() });
   });
 
-  if (snapshot.size === 0) {
+  const visibleProducts = latestProducts.filter(p => !searchTerm || String(p.name || '').toLowerCase().includes(searchTerm));
+
+  visibleProducts.forEach(p => {
+    const safeName = escapeHtml(p.name || 'N/A');
+    const jsName = escapeJsString(p.name || 'N/A');
+    tableHTML += `<tr><td>${safeName}</td>${perms.canViewBuyingPrice ? `<td>${formatCurrency(p.buy)}</td>` : ''}<td>${formatCurrency(p.sell)}</td><td>${p.stock || 0}</td>${perms.canEditProducts || perms.canDeleteProducts ? `<td>${perms.canEditProducts ? `<button class="action-btn edit-btn" onclick="editProduct('${p.id}', '${jsName}', ${p.buy || 0}, ${p.sell || 0}, ${p.stock || 0})">Edit</button>` : ''}${perms.canDeleteProducts ? `<button class="action-btn delete-btn" onclick="deleteProduct('${p.id}', '${jsName}')">Delete</button>` : ''}</td>` : ''}</tr>`;
+  });
+
+  const salesProducts = latestProducts.filter(p => !salesSearchTerm || String(p.name || '').toLowerCase().includes(salesSearchTerm));
+
+  salesProducts.forEach(p => {
+    selectHTML += `<option value="${p.id}">${escapeHtml(p.name || 'N/A')} (Stock: ${p.stock || 0})</option>`;
+  });
+
+  latestProducts.forEach(p => {
+    purchaseSelectHTML += `<option value="${p.id}">${escapeHtml(p.name || 'N/A')} (Stock: ${p.stock || 0})</option>`;
+  });
+
+  if (latestProducts.length === 0) {
     const colspan = 3 + (perms.canViewBuyingPrice ? 1 : 0) + (perms.canEditProducts || perms.canDeleteProducts ? 1 : 0);
     tableHTML += `<tr><td colspan="${colspan}" style="text-align:center;">No products yet</td></tr>`;
+  } else if (visibleProducts.length === 0) {
+    const colspan = 3 + (perms.canViewBuyingPrice ? 1 : 0) + (perms.canEditProducts || perms.canDeleteProducts ? 1 : 0);
+    tableHTML += `<tr><td colspan="${colspan}" style="text-align:center;">No matching products</td></tr>`;
   }
 
   stockTable.innerHTML = tableHTML;
-  productSelect.innerHTML = selectHTML;
+  if (productSelect) {
+    productSelect.innerHTML = selectHTML;
+    if (salesProducts.some(p => p.id === selectedSaleProduct)) productSelect.value = selectedSaleProduct;
+  }
+  if (purchaseProductSelect) {
+    purchaseProductSelect.innerHTML = purchaseSelectHTML;
+    if (latestProducts.some(p => p.id === selectedPurchaseProduct)) purchaseProductSelect.value = selectedPurchaseProduct;
+  }
+  document.getElementById('productSearchNote').textContent = searchTerm ? `Showing ${visibleProducts.length} of ${latestProducts.length} products` : '';
+  const salesNote = document.getElementById('salesProductSearchNote');
+  if (salesNote) salesNote.textContent = salesSearchTerm ? `Showing ${salesProducts.length} of ${latestProducts.length} products` : '';
+}
+
+function filterProducts() {
+  const products = latestProducts.slice();
+  const fakeSnapshot = { forEach: callback => products.forEach(p => callback({ id: p.id, data: () => p })), size: products.length };
+  renderProducts(fakeSnapshot);
+}
+
+function clearProductSearch() {
+  document.getElementById('productSearch').value = '';
+  filterProducts();
+}
+
+function filterSalesProducts() {
+  filterProducts();
+}
+
+function clearSalesProductSearch() {
+  document.getElementById('salesProductSearch').value = '';
+  filterProducts();
 }
 
 function editProduct(id, name, buy, sell, stock) {
@@ -1018,108 +1189,6 @@ function deleteProduct(productId, productName) {
   document.getElementById('confirmModal').classList.add('active');
 }
 
-let allProducts = [];
-
-function renderProducts(snapshot) {
-  const stockTable = document.getElementById('stockTable');
-  const productSelect = document.getElementById('productSelect');
-  const purchaseProductSelect = document.getElementById('purchaseProductSelect');
-
-  allProducts = [];
-
-  let tableHTML = `
-  <tr>
-    <th>Name</th>
-    <th>Sell</th>
-    <th>Stock</th>
-  </tr>`;
-
-  let selectHTML = '';
-
-  snapshot.forEach(doc => {
-    const p = doc.data();
-
-    allProducts.push({
-      id: doc.id,
-      name: p.name,
-      stock: p.stock || 0,
-      buy: p.buy || 0,
-      sell: p.sell || 0
-    });
-
-    tableHTML += `
-    <tr>
-      <td>${p.name}</td>
-      <td>${formatCurrency(p.sell)}</td>
-      <td>${p.stock}</td>
-    </tr>`;
-
-    selectHTML += `
-    <option value="${doc.id}">
-      ${p.name} (Stock: ${p.stock})
-    </option>`;
-  });
-
-  stockTable.innerHTML = tableHTML;
-  productSelect.innerHTML = `<option value="">Select Product</option>` + selectHTML;
-  if (purchaseProductSelect) {
-    purchaseProductSelect.innerHTML = `<option value="">Select Product</option>` + selectHTML;
-  }
-}
- function filterProducts() {
-  const search = document
-    .getElementById('productSearch')
-    .value
-    .toLowerCase();
-
-  const productSelect = document.getElementById('productSelect');
-
-  let html = '<option value="">Select Product</option>';
-
-  allProducts.forEach(product => {
-    if (product.name.toLowerCase().includes(search)) {
-      html += `
-      <option value="${product.id}">
-        ${product.name} (Stock: ${product.stock})
-      </option>`;
-    }
-  });
-
-  productSelect.innerHTML = html;
-}
-
-function filterPurchaseProducts() {
-  const search = document
-    .getElementById('purchaseProductSearch')
-    .value
-    .toLowerCase();
-
-  const productSelect = document.getElementById('purchaseProductSelect');
-
-  let html = '<option value="">Select Product</option>';
-
-  allProducts.forEach(product => {
-    if (product.name.toLowerCase().includes(search)) {
-      html += `
-      <option value="${product.id}">
-        ${product.name} (Stock: ${product.stock})
-      </option>`;
-    }
-  });
-
-  productSelect.innerHTML = html;
-}
-
-function fillPurchasePrice() {
-  const productId = document.getElementById('purchaseProductSelect').value;
-  const priceInput = document.getElementById('purchasePrice');
-  const product = allProducts.find(item => item.id === productId);
-
-  if (product && (!priceInput.value || parseFloat(priceInput.value) <= 0)) {
-    priceInput.value = product.buy || '';
-  }
-}
-
 // ============= SALES =============
 function sell() {
   if (!currentUser || !currentUser.orgId) return;
@@ -1132,16 +1201,22 @@ function sell() {
 
   if (!productId || isNaN(qty) || qty < 1) { showAlert('Select product and valid quantity', 'danger'); return; }
 
-  firestoredb.collection('products').doc(productId).get()
-    .then(doc => {
-      if (!doc.exists) { showAlert('Product not found', 'danger'); return; }
+  const productRef = firestoredb.collection('products').doc(productId);
+  const saleRef = firestoredb.collection('sales').doc();
+  let completedSale = null;
+
+  firestoredb.runTransaction(transaction => {
+    return transaction.get(productRef).then(doc => {
+      if (!doc.exists) throw new Error('Product not found');
       const p = doc.data();
-      if (qty > p.stock) { showAlert(`Not enough stock. Available: ${p.stock}`, 'danger'); return; }
+      const availableStock = p.stock || 0;
+      if (qty > availableStock) throw new Error(`Not enough stock. Available: ${availableStock}`);
 
       const unitPrice = customPrice > 0 ? customPrice : p.sell;
       const subtotal = unitPrice * qty;
       const total = subtotal - discount;
       const profit = (unitPrice - p.buy) * qty - discount;
+      if (total < 0) throw new Error('Discount cannot be greater than subtotal');
 
       const sale = {
         product: p.name, productId, qty, unitPrice, subtotal, discount, total, profit,
@@ -1149,82 +1224,16 @@ function sell() {
         date: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      return firestoredb.collection('sales').add(sale).then(() => {
-        return firestoredb.collection('products').doc(productId).update({ stock: p.stock - qty });
-      }).then(() => {
-        generateReceipt({ ...sale, date: new Date() });
-        showAlert('Sale completed!', 'success');
-		loadTodaySales();
-		loadTodaySalesSummary();
-        clearForm(['qty', 'customPrice', 'discount', 'customer']);
-        document.getElementById('productSelect').value = '';
-        updateDashboard();
-      });
-    }).catch(err => showAlert(err.message, 'danger'));
-}
-
-function loadTodaySales() {
-
-    if (!currentUser || !currentUser.orgId) return;
-
-      const table = document.getElementById("todaySoldItemsTable");
-
-    const today = new Date().toDateString();
-
-    firestoredb.collection("sales")
-    .where("orgId","==",currentUser.orgId)
-    .orderBy("date","desc")
-    .limit(50)
-    .get()
-    .then(snapshot=>{
-
-        let html = `
-        <tr>
-            <th>Item</th>
-            <th>Price</th>
-            <th>Qty</th>
-            <th>Total</th>
-            <th>Payment</th>
-        </tr>`;
-
-        let found = false;
-
-        snapshot.forEach(doc=>{
-
-            const sale = doc.data();
-
-            if(!sale.date) return;
-
-            const saleDate =
-            sale.date.toDate().toDateString();
-
-            if(saleDate === today){
-
-                found = true;
-
-                html += `
-                <tr>
-                    <td>${sale.product || 'N/A'}</td>
-                    <td>${formatCurrency(sale.unitPrice)}</td>
-                    <td>${sale.qty || 0}</td>
-                    <td>${formatCurrency(sale.total)}</td>
-                    <td>${sale.payment || 'N/A'}</td>
-                </tr>`;
-            }
-
-        });
-
-        if(!found){
-            html += `
-            <tr>
-                <td colspan="5" style="text-align:center">
-                No sales today
-                </td>
-            </tr>`;
-        }
-
-        table.innerHTML = html;
+      transaction.set(saleRef, sale);
+      transaction.update(productRef, { stock: availableStock - qty });
+      completedSale = sale;
     });
+  }).then(() => {
+    generateReceipt({ ...completedSale, date: new Date() });
+    showAlert('Sale completed!', 'success');
+    clearForm(['qty', 'customPrice', 'discount', 'customer']);
+    document.getElementById('productSelect').value = '';
+  }).catch(err => showAlert(err.message, 'danger'));
 }
 
 function generateReceipt(sale) {
@@ -1254,12 +1263,44 @@ function renderRecentSales(snapshot) {
     const colspan = 5 + (perms.canDeleteSales ? 1 : 0);
     html += `<tr><td colspan="${colspan}" style="text-align:center;">No sales yet</td></tr>`;
   } else {
+    let shown = 0;
     snapshot.forEach(doc => {
+      if (shown >= 50) return;
       const s = doc.data(), docId = doc.id;
       const dateStr = s.date ? formatDate(s.date.toDate ? s.date.toDate() : s.date) : 'N/A';
-      html += `<tr><td>${dateStr}</td><td>${s.product || 'N/A'}</td><td>${s.qty || 0}</td><td>${formatCurrency(s.total)}</td><td>${s.soldBy || 'N/A'}</td>${perms.canDeleteSales ? `<td><button class="action-btn delete-btn" onclick="deleteSale('${docId}', '${s.productId}', ${s.qty || 0})">Delete</button></td>` : ''}</tr>`;
+      html += `<tr><td>${escapeHtml(dateStr)}</td><td>${escapeHtml(s.product || 'N/A')}</td><td>${s.qty || 0}</td><td>${formatCurrency(s.total)}</td><td>${escapeHtml(s.soldBy || 'N/A')}</td>${perms.canDeleteSales ? `<td><button class="action-btn delete-btn" onclick="deleteSale('${docId}', '${escapeJsString(s.productId || '')}', ${s.qty || 0})">Delete</button></td>` : ''}</tr>`;
+      shown++;
     });
   }
+  table.innerHTML = html;
+}
+
+function renderTodaysSoldProducts(snapshot) {
+  const table = document.getElementById('todaySoldTable');
+  const soldByProduct = {};
+
+  snapshot.forEach(doc => {
+    const s = doc.data();
+    if (!isToday(s.date)) return;
+    const key = s.productId || s.product || doc.id;
+    if (!soldByProduct[key]) {
+      soldByProduct[key] = { product: s.product || 'N/A', qty: 0, total: 0 };
+    }
+    soldByProduct[key].qty += s.qty || 0;
+    soldByProduct[key].total += s.total || 0;
+  });
+
+  const rows = Object.values(soldByProduct).sort((a, b) => b.qty - a.qty);
+  let html = '<tr><th>Product</th><th>Quantity Sold</th><th>Total Sales</th></tr>';
+
+  if (rows.length === 0) {
+    html += '<tr><td colspan="3" style="text-align:center;">No products sold today</td></tr>';
+  } else {
+    rows.forEach(row => {
+      html += `<tr><td>${escapeHtml(row.product)}</td><td>${row.qty}</td><td>${formatCurrency(row.total)}</td></tr>`;
+    });
+  }
+
   table.innerHTML = html;
 }
 
@@ -1268,12 +1309,12 @@ function deleteSale(saleId, productId, qty) {
   confirmAction = () => {
     const promises = [];
     if (productId && qty > 0) {
-      promises.push(firestoredb.collection('products').doc(productId).get().then(doc => {
-        if (doc.exists) return firestoredb.collection('products').doc(productId).update({ stock: (doc.data().stock || 0) + qty });
+      promises.push(firestoredb.collection('products').doc(productId).update({
+        stock: firebase.firestore.FieldValue.increment(qty)
       }));
     }
     Promise.all(promises).then(() => firestoredb.collection('sales').doc(saleId).delete())
-      .then(() => { updateDashboard(); showAlert('Sale deleted, stock restored', 'success'); })
+      .then(() => showAlert('Sale deleted, stock restored', 'success'))
       .catch(err => showAlert(err.message, 'danger'));
   };
   document.getElementById('confirmMessage').textContent = 'Delete this sale? Stock will be restored.';
@@ -1282,177 +1323,89 @@ function deleteSale(saleId, productId, qty) {
 
 // ============= PURCHASES =============
 function addPurchase() {
-  if (!checkPermission('canAddPurchases', 'Add purchase')) return;
+  if (!checkPermission('canRecordPurchases', 'Record purchase')) return;
   if (!currentUser || !currentUser.orgId) return;
 
   const productId = document.getElementById('purchaseProductSelect').value;
   const qty = parseInt(document.getElementById('purchaseQty').value);
-  const unitCost = parseFloat(document.getElementById('purchasePrice').value);
-  const supplier = document.getElementById('purchaseSupplier').value.trim() || 'N/A';
-  const note = document.getElementById('purchaseNote').value.trim();
+  const enteredCost = parseFloat(document.getElementById('purchaseCost').value);
+  const supplier = document.getElementById('supplier').value.trim() || 'N/A';
 
-  if (!productId) { showAlert('Select product for purchase', 'danger'); return; }
-  if (isNaN(qty) || qty < 1) { showAlert('Enter valid purchase quantity', 'danger'); return; }
-  if (isNaN(unitCost) || unitCost < 0) { showAlert('Enter valid buying price', 'danger'); return; }
+  if (!productId || isNaN(qty) || qty < 1) {
+    showAlert('Select product and enter a valid purchase quantity', 'danger');
+    return;
+  }
 
   const productRef = firestoredb.collection('products').doc(productId);
+  const purchaseRef = firestoredb.collection('purchases').doc();
 
-  productRef.get().then(doc => {
-    if (!doc.exists) { throw new Error('Product not found'); }
+  firestoredb.runTransaction(transaction => {
+    return transaction.get(productRef).then(doc => {
+      if (!doc.exists) throw new Error('Product not found');
+      const product = doc.data();
+      const unitCost = !isNaN(enteredCost) && enteredCost > 0 ? enteredCost : (product.buy || 0);
+      const purchase = {
+        product: product.name,
+        productId,
+        qty,
+        unitCost,
+        totalCost: unitCost * qty,
+        supplier,
+        orgId: currentUser.orgId,
+        recordedBy: currentUser.user,
+        date: firebase.firestore.FieldValue.serverTimestamp()
+      };
 
-    const product = doc.data();
-    const totalCost = qty * unitCost;
-    const purchaseLog = {
-      product: product.name || 'N/A',
-      productId,
-      qty,
-      unitCost,
-      totalCost,
-      supplier,
-      note,
-      orgId: currentUser.orgId,
-      recordedBy: currentUser.user,
-      date: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    return productRef.update({
-      stock: (product.stock || 0) + qty,
-      buy: unitCost,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(() => {
-      return firestoredb.collection('purchases').add(purchaseLog)
-        .then(() => ({ logSaved: true }))
-        .catch(err => {
-          debugLog('Purchase log not saved: ' + err.message, 'warn');
-          return { logSaved: false };
-        });
+      transaction.set(purchaseRef, purchase);
+      const productUpdate = {
+        stock: (product.stock || 0) + qty,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (!isNaN(enteredCost) && enteredCost > 0) productUpdate.buy = enteredCost;
+      transaction.update(productRef, productUpdate);
     });
-  }).then(result => {
-    clearForm(['purchaseQty', 'purchasePrice', 'purchaseSupplier', 'purchaseNote']);
+  }).then(() => {
+    showAlert('Purchase recorded and stock updated!', 'success');
+    clearForm(['purchaseQty', 'purchaseCost', 'supplier']);
     document.getElementById('purchaseProductSelect').value = '';
-    updateDashboard();
-    if (result && result.logSaved === false) {
-      showAlert('Stock updated. Purchase log was blocked by Firebase permissions.', 'warning');
-    } else {
-      showAlert('Purchase added and stock updated!', 'success');
-    }
   }).catch(err => showAlert(err.message, 'danger'));
 }
 
 function renderPurchases(snapshot) {
   const table = document.getElementById('purchasesTable');
   if (!table) return;
-
-  let html = `<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr>`;
+  const perms = PERMISSIONS[currentUser.role] || PERMISSIONS[ROLES.SALES];
+  let html = `<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th>${perms.canDeletePurchases ? '<th>Action</th>' : ''}</tr>`;
 
   if (snapshot.size === 0) {
-    html += `<tr><td colspan="7" style="text-align:center;">No purchases yet</td></tr>`;
+    const colspan = 7 + (perms.canDeletePurchases ? 1 : 0);
+    html += `<tr><td colspan="${colspan}" style="text-align:center;">No purchases yet</td></tr>`;
   } else {
     snapshot.forEach(doc => {
-      const p = doc.data();
+      const p = doc.data(), docId = doc.id;
       const dateStr = p.date ? formatDate(p.date.toDate ? p.date.toDate() : p.date) : 'N/A';
-      html += `<tr><td>${dateStr}</td><td>${p.product || 'N/A'}</td><td>${p.qty || 0}</td><td>${formatCurrency(p.unitCost)}</td><td>${formatCurrency(p.totalCost)}</td><td>${p.supplier || 'N/A'}</td><td>${p.recordedBy || 'N/A'}</td></tr>`;
+      html += `<tr><td>${escapeHtml(dateStr)}</td><td>${escapeHtml(p.product || 'N/A')}</td><td>${p.qty || 0}</td><td>${formatCurrency(p.unitCost)}</td><td>${formatCurrency(p.totalCost)}</td><td>${escapeHtml(p.supplier || 'N/A')}</td><td>${escapeHtml(p.recordedBy || 'N/A')}</td>${perms.canDeletePurchases ? `<td><button class="action-btn delete-btn" onclick="deletePurchase('${docId}', '${escapeJsString(p.productId || '')}', ${p.qty || 0})">Delete</button></td>` : ''}</tr>`;
     });
   }
 
   table.innerHTML = html;
 }
-     function loadTodaySalesSummary() {
 
-    if (!currentUser || !currentUser.orgId) return;
-
-    const table = document.getElementById('todaySalesSummaryTable');
-    if (!table) return;
-
-    firestoredb.collection('sales')
-        .where('orgId', '==', currentUser.orgId)
-        .orderBy('date', 'desc')
-        .limit(100)
-        .get()
-        .then(snapshot => {
-
-            let html = `
-            <tr>
-                <th>Product</th>
-                <th>Total Qty</th>
-                <th>Avg Price</th>
-                <th>Total Sales</th>
-                <th>Payments</th>
-            </tr>`;
-
-            const today = new Date().toDateString();
-            const summary = {};
-            let totalQty = 0;
-            let totalSales = 0;
-
-            snapshot.forEach(doc => {
-
-                const sale = doc.data();
-
-                if (!sale.date) return;
-
-                const saleDate = (sale.date.toDate ? sale.date.toDate() : new Date(sale.date)).toDateString();
-
-                if (saleDate === today) {
-
-                    const product = sale.product || 'N/A';
-                    const qty = sale.qty || 0;
-                    const saleTotal = sale.total || 0;
-                    const payment = sale.payment || 'N/A';
-
-                    if (!summary[product]) {
-                        summary[product] = {
-                            qty: 0,
-                            total: 0,
-                            payments: new Set()
-                        };
-                    }
-
-                    summary[product].qty += qty;
-                    summary[product].total += saleTotal;
-                    summary[product].payments.add(payment);
-                    totalQty += qty;
-                    totalSales += saleTotal;
-                }
-            });
-
-            const productNames = Object.keys(summary).sort();
-
-            if (productNames.length === 0) {
-                html += `
-                    <tr>
-                        <td colspan="5" style="text-align:center">No sales today</td>
-                    </tr>`;
-            } else {
-                productNames.forEach(product => {
-                    const item = summary[product];
-                    const avgPrice = item.qty > 0 ? item.total / item.qty : 0;
-
-                    html += `
-                    <tr>
-                        <td>${product}</td>
-                        <td>${item.qty}</td>
-                        <td>${formatCurrency(avgPrice)}</td>
-                        <td>${formatCurrency(item.total)}</td>
-                        <td>${Array.from(item.payments).join(', ')}</td>
-                    </tr>`;
-                });
-            }
-
-            html += `
-            <tr style="font-weight:bold;background:#f0f0f0;">
-                <td>Total</td>
-                <td>${totalQty}</td>
-                <td>-</td>
-                <td>${formatCurrency(totalSales)}</td>
-                <td>-</td>
-            </tr>`;
-
-            table.innerHTML = html;
-        })
-        .catch(err => {
-            console.error(err);
-        });
+function deletePurchase(purchaseId, productId, qty) {
+  if (!checkPermission('canDeletePurchases', 'Delete purchase')) return;
+  confirmAction = () => {
+    const promises = [];
+    if (productId && qty > 0) {
+      promises.push(firestoredb.collection('products').doc(productId).update({
+        stock: firebase.firestore.FieldValue.increment(-qty)
+      }));
+    }
+    Promise.all(promises).then(() => firestoredb.collection('purchases').doc(purchaseId).delete())
+      .then(() => showAlert('Purchase deleted and stock adjusted', 'success'))
+      .catch(err => showAlert(err.message, 'danger'));
+  };
+  document.getElementById('confirmMessage').textContent = 'Delete this purchase? Stock will be reduced.';
+  document.getElementById('confirmModal').classList.add('active');
 }
 
 // ============= EXPENSES =============
@@ -1654,7 +1607,9 @@ document.getElementById('editModal').addEventListener('click', (e) => { if (e.ta
 // ============= INIT =============
 document.addEventListener('DOMContentLoaded', () => {
   debugLog('Page loaded. Waiting for auth state...');
-  showLogin();
+  const resetCode = getResetCodeFromUrl();
+  if (resetCode) showResetPassword(resetCode);
+  else showLogin();
 });
 </script>
 
