@@ -196,6 +196,39 @@
     #debugPanel {
   display: none;
 }
+
+    /* EDDMOBI modern responsive refresh */
+    body{background:radial-gradient(circle at 10% 0%,#e8efff 0,transparent 32%),linear-gradient(135deg,#eef2f9,#f8faff);padding:clamp(8px,2vw,24px);color:#172033}
+    .container{max-width:1380px;border-radius:20px;box-shadow:0 24px 70px rgba(16,34,67,.16);border:1px solid rgba(255,255,255,.8)}
+    .header{background:linear-gradient(120deg,#0c1c38,#1457c5 70%,#e5323a);padding:28px 20px}
+    #app{padding:clamp(12px,2.2vw,28px)}
+    .top-bar{background:#fff;border:1px solid #e7ebf3;border-radius:14px;padding:14px 18px;box-shadow:0 5px 18px rgba(20,40,80,.05)}
+    .user-info{color:#163f88}.tabs{gap:6px;border:0;background:#edf2fb;padding:7px;border-radius:13px}
+    .tab-btn{border-radius:9px;padding:11px 15px;color:#53627b;border:0}
+    .tab-btn.active{background:#1457c5;color:white;box-shadow:0 6px 15px #1457c52b}
+    .section{background:#fff;padding:22px;border:1px solid #e8edf5;border-radius:16px;margin-bottom:20px;box-shadow:0 7px 25px rgba(16,34,67,.045)}
+    .section h3{color:#15233b;border-bottom-color:#e5323a;padding-bottom:12px}
+    input,select{border:1px solid #dce3ee;border-radius:9px;background:#fff;min-height:42px}
+    input:focus,select:focus{outline:3px solid #1457c51c;border-color:#1457c5}
+    button{background:#1457c5;border-radius:9px;transition:transform .15s,filter .15s}
+    button:hover{filter:brightness(1.05);transform:translateY(-1px)}
+    button.success{background:#168653}.logout-btn,button.danger{background:#e5323a}
+    .stat-card{background:linear-gradient(135deg,#10203a,#1457c5);border-radius:15px;box-shadow:0 10px 24px #1457c51c}
+    .stat-card:nth-child(2){background:linear-gradient(135deg,#112b45,#167c90)}.stat-card:nth-child(3){background:linear-gradient(135deg,#9e2028,#e5323a)}.stat-card:nth-child(4){background:linear-gradient(135deg,#1e583c,#21a36b)}
+    table{border-collapse:separate;border-spacing:0;overflow:hidden;border-radius:10px;font-size:13px}
+    th{background:#142744;color:#fff}th,td{padding:11px 12px;border:0;border-bottom:1px solid #e8edf5}
+    tr:nth-child(even){background:#f7f9fd}tr:last-child td{border-bottom:0}
+    #output,#receipt{background:#f8faff;border:1px solid #dfe7f3;border-left:4px solid #1457c5;border-radius:12px;font-family:ui-monospace,Consolas,monospace;max-height:none}
+    .reset-btn,.secondary-btn{background:#edf2fb!important;color:#1c3765!important;border:1px solid #d6e1f2!important}
+    .section-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .section-title-row>div{display:flex;gap:8px;flex-wrap:wrap}
+    .stock-alerts{display:grid;gap:10px}.stock-alert{display:flex;align-items:center;gap:12px;border-radius:12px;padding:13px 15px;border:1px solid}
+    .stock-alert.low{background:#fff8e8;border-color:#f5d58c;color:#7c4a03}.stock-alert.out{background:#fff0f0;border-color:#f1b6b6;color:#a51f27}
+    .stock-alert-icon{font-size:22px}.stock-alert small{display:block;margin-top:3px}.stock-count{margin-left:auto;font-size:20px;font-weight:900}
+    .stock-ok{background:#edfbf3;border:1px solid #bce8cc;color:#166534;padding:15px;border-radius:10px}
+    .muted{color:#718096;padding:12px}.receipt-upload{display:grid;gap:5px;padding:10px;border:1px dashed #cbd5e1;border-radius:10px;font-size:12px}.receipt-upload label{font-weight:700;color:#34445f}
+    @media(max-width:700px){.section{padding:14px}.tab-btn{padding:9px 11px;font-size:12px}.stat-card{padding:15px}.stat-card .value{font-size:20px}table{display:block;overflow-x:auto;white-space:nowrap}.section-title-row{align-items:flex-start}}
+
   </style>
 <base target="_blank">
 </head> 
@@ -282,6 +315,10 @@
           <div class="stat-card"><h4>Today's Sales</h4><div class="value" id="todaySales">KES 0</div></div>
           <div class="stat-card"><h4>Today's Profit</h4><div class="value" id="todayProfit">KES 0</div></div>
         </div>
+        <div class="section stock-alert-section">
+          <div class="section-title-row"><h3>Stock Alerts</h3><button type="button" class="secondary-btn" onclick="enableStockNotifications()">Enable browser notifications</button></div>
+          <div id="stockAlerts" class="stock-alerts"><p class="muted">Stock alerts will appear here.</p></div>
+        </div>
       </div>
     </div>
 
@@ -293,7 +330,9 @@
           <input id="buy" type="number" placeholder="Buying price" min="0" step="0.01">
           <input id="sell" type="number" placeholder="Selling price" min="0" step="0.01">
           <input id="stock" type="number" placeholder="Initial stock" min="0">
-          <button onclick="addProduct()">Add Product</button>
+          <input id="lowStockThreshold" type="number" placeholder="Low-stock alert level" min="0" value="5">
+          <button type="button" onclick="addProduct()">Add Product</button>
+          <button type="button" class="reset-btn" onclick="resetProductForm()">Reset Form</button>
         </div>
       </div>
       <div class="section">
@@ -315,7 +354,8 @@
           <input id="discount" type="number" placeholder="Discount" min="0" step="0.01" value="0">
           <input id="customer" placeholder="Customer name (optional)">
           <select id="payment"><option>Cash</option><option>M-Pesa</option><option>Cheque</option><option>Credit</option></select>
-          <button class="success" onclick="sell()">Complete Sale</button>
+          <button class="success" type="button" onclick="sell()">Complete Sale</button>
+          <button class="reset-btn" type="button" onclick="resetSaleForm()">Reset Form</button>
         </div>
       </div>
 	  <div class="section">
@@ -331,7 +371,10 @@
         <h3>Recent Sales</h3>
         <table id="recentSalesTable"></table>
       </div>
-      <div id="receipt"></div>
+      <div class="section">
+        <div class="section-title-row"><h3>Receipt / Invoice</h3><div><button type="button" onclick="printLastInvoice()">Print / Save Invoice</button><button type="button" class="reset-btn" onclick="clearReceipt()">Clear Receipt</button></div></div>
+        <div id="receipt">Complete a sale to generate a receipt and invoice here.</div>
+      </div>
     </div>
 
     <div id="dailySales" class="tab-content">
@@ -361,7 +404,9 @@
           <input id="purchasePrice" type="number" placeholder="Buying price per item" min="0" step="0.01">
           <input id="purchaseSupplier" placeholder="Supplier (optional)">
           <input id="purchaseNote" placeholder="Note (optional)">
-          <button class="success" onclick="addPurchase()">Add Purchase</button>
+          <div class="receipt-upload"><label for="purchaseReceipt">Supplier receipt (image/PDF, max 700 KB)</label><input id="purchaseReceipt" type="file" accept="image/*,.pdf"></div>
+          <button class="success" type="button" onclick="addPurchase()">Add Purchase & Update Stock</button>
+          <button class="reset-btn" type="button" onclick="resetPurchaseForm()">Reset Form</button>
         </div>
       </div>
       <div class="section">
@@ -872,7 +917,7 @@ function switchTab(tabName, btnElement) {
   if (tabName === 'purchases' && hasPermission('canViewPurchases')) {
     filterPurchaseProducts();
     if (document.getElementById('purchasesTable').innerHTML.trim() === '') {
-      document.getElementById('purchasesTable').innerHTML = '<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr><tr><td colspan="7" style="text-align:center;">No purchases yet</td></tr>';
+      document.getElementById('purchasesTable').innerHTML = '<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr><tr><td colspan="8" style="text-align:center;">No purchases yet</td></tr>';
     }
   }
   if (tabName === 'users' && hasPermission('canManageUsers')) loadUsers();
@@ -985,7 +1030,7 @@ function addProduct() {
     name, buy, sell, stock, orgId: currentUser.orgId,
     createdBy: currentUser.user,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(() => { showAlert('Product added!', 'success'); clearForm(['pname','buy','sell','stock']); })
+  }).then(() => { showAlert('Product added!', 'success'); clearForm(['pname','buy','sell','stock']); document.getElementById('lowStockThreshold').value = 5; })
     .catch(err => showAlert(err.message, 'danger'));
 }
 
@@ -1076,6 +1121,7 @@ function renderProducts(snapshot) {
       id: doc.id,
       name: p.name,
       stock: p.stock || 0,
+      lowStockThreshold: Number.isFinite(p.lowStockThreshold) ? p.lowStockThreshold : 5,
       buy: p.buy || 0,
       sell: p.sell || 0
     });
@@ -1094,6 +1140,7 @@ function renderProducts(snapshot) {
   });
 
   stockTable.innerHTML = tableHTML;
+  renderStockAlerts(allProducts);
   productSelect.innerHTML = `<option value="">Select Product</option>` + selectHTML;
   if (purchaseProductSelect) {
     purchaseProductSelect.innerHTML = `<option value="">Select Product</option>` + selectHTML;
@@ -1151,6 +1198,52 @@ function fillPurchasePrice() {
   if (product && (!priceInput.value || parseFloat(priceInput.value) <= 0)) {
     priceInput.value = product.buy || '';
   }
+}
+
+// ============= STOCK ALERTS + FORM RESET =============
+let lastStockAlertSignature = '';
+function renderStockAlerts(products) {
+  const box = document.getElementById('stockAlerts');
+  if (!box) return;
+  const alerts = (products || []).filter(p => Number(p.stock || 0) <= 0 || Number(p.stock || 0) <= Number(p.lowStockThreshold ?? 5));
+  const signature = alerts.map(p => `${p.id}:${p.stock}`).sort().join('|');
+  box.innerHTML = alerts.length ? alerts.map(p => {
+    const out = Number(p.stock || 0) <= 0;
+    return `<div class="stock-alert ${out ? 'out' : 'low'}"><span class="stock-alert-icon">${out ? '⛔' : '⚠️'}</span><div><b>${escapeInvoice(p.name)}</b><small>${out ? 'OUT OF STOCK — restock immediately' : `LOW STOCK — ${p.stock} remaining (alert level ${p.lowStockThreshold ?? 5})`}</small></div><span class="stock-count">${p.stock}</span></div>`;
+  }).join('') : '<div class="stock-ok">✓ All products are above their low-stock levels.</div>';
+  if (signature && signature !== lastStockAlertSignature && lastStockAlertSignature !== '') {
+    const out = alerts.filter(p => Number(p.stock || 0) <= 0);
+    if (out.length) showAlert('Out of stock: ' + out.map(p=>p.name).join(', '), 'danger');
+    else if (alerts.length) showAlert('Low-stock warning: ' + alerts.map(p=>p.name).join(', '), 'warning');
+    if ('Notification' in window && Notification.permission === 'granted') {
+      alerts.forEach(p => new Notification(Number(p.stock||0)<=0 ? 'Product out of stock' : 'Low stock alert', {body:`${p.name}: ${p.stock} left`}));
+    }
+  }
+  lastStockAlertSignature = signature;
+}
+function enableStockNotifications() {
+  if (!('Notification' in window)) { showAlert('Browser notifications are not supported. Stock alerts will still appear on the dashboard.', 'warning'); return; }
+  Notification.requestPermission().then(permission => showAlert(permission === 'granted' ? 'Browser stock notifications enabled.' : 'Notifications not enabled. Check browser site permissions.', permission === 'granted' ? 'success' : 'warning'));
+}
+function resetSaleForm() {
+  ['productSearch','qty','customPrice','customer'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+  document.getElementById('discount').value='0';
+  document.getElementById('payment').selectedIndex=0;
+  document.getElementById('productSelect').value='';
+  filterProducts();
+  showAlert('Sale form reset. No sales or stock records were deleted.', 'success');
+}
+function resetPurchaseForm() {
+  ['purchaseProductSearch','purchaseQty','purchasePrice','purchaseSupplier','purchaseNote'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+  const file=document.getElementById('purchaseReceipt'); if(file)file.value='';
+  document.getElementById('purchaseProductSelect').value='';
+  filterPurchaseProducts();
+  showAlert('Purchase form reset. Existing stock and purchase records were not changed.', 'success');
+}
+function resetProductForm() {
+  clearForm(['pname','buy','sell','stock']);
+  document.getElementById('lowStockThreshold').value='5';
+  showAlert('Product form reset. Existing products were not changed.', 'success');
 }
 
 // ============= SALES =============
@@ -1297,22 +1390,41 @@ function loadTodaySales() {
     });
 }
 
+let lastInvoiceSale = null;
 function generateReceipt(sale) {
-  document.getElementById('receipt').textContent = `
+  lastInvoiceSale = {...sale, invoiceNo: sale.invoiceNo || ('EDD-' + Date.now().toString().slice(-8))};
+  const s = lastInvoiceSale;
+  document.getElementById('receipt').textContent =
+`EDDMOBI ELECTRONICS
+SALES RECEIPT / INVOICE
+Invoice No: ${s.invoiceNo}
+Date: ${formatDate(s.date)}
+Customer: ${s.customer || 'Walk-in'}
+Sold By: ${s.soldBy || 'Staff'}
+Payment: ${s.payment || 'Cash'}
 
-       EDDMOBI POS RECEIPT            
+Item: ${s.product}
+Quantity: ${s.qty} x ${formatCurrency(s.unitPrice)}
+Subtotal: ${formatCurrency(s.subtotal)}
+${s.discount > 0 ? 'Discount: -' + formatCurrency(s.discount) + '\\n' : ''}TOTAL DUE: ${formatCurrency(s.total)}
 
-Date: ${formatDate(sale.date)}
-Customer: ${sale.customer}
-Sold By: ${sale.soldBy || 'Staff'}
-Payment: ${sale.payment}
-Product: ${sale.product}
-Qty: ${sale.qty} x ${formatCurrency(sale.unitPrice)}
-Subtotal: ${formatCurrency(sale.subtotal)}
-${sale.discount > 0 ? 'Discount: -' + formatCurrency(sale.discount) + '' : ''}
-TOTAL: ${formatCurrency(sale.total)}
-Thank you for your business!
- 0722540912`;
+Thank you for shopping with Eddmobi!
+0722540912`;
+}
+function escapeInvoice(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function printLastInvoice() {
+  if (!lastInvoiceSale) { showAlert('Complete a sale first to generate an invoice.', 'warning'); return; }
+  const s = lastInvoiceSale;
+  const w = window.open('', '_blank', 'width=800,height=700');
+  if (!w) { showAlert('Allow pop-ups to print the invoice.', 'warning'); return; }
+  w.document.write(`<!doctype html><html><head><title>Invoice ${escapeInvoice(s.invoiceNo)}</title><style>body{font-family:Arial,sans-serif;max-width:760px;margin:35px auto;padding:25px;color:#172033}h1{color:#1557b0;margin-bottom:4px}.sub{color:#667085}table{width:100%;border-collapse:collapse;margin:25px 0}td,th{padding:12px;border-bottom:1px solid #ddd;text-align:left}.total{text-align:right;font-size:22px;font-weight:bold;color:#1557b0}.thanks{margin-top:35px;border-top:3px solid #e5323a;padding-top:15px}</style></head><body><h1>EDDMOBI ELECTRONICS</h1><div class="sub">Kajiado Town · 0722540912</div><h2>SALES INVOICE</h2><p><b>Invoice:</b> ${escapeInvoice(s.invoiceNo)}<br><b>Date:</b> ${escapeInvoice(formatDate(s.date))}<br><b>Customer:</b> ${escapeInvoice(s.customer||'Walk-in')}<br><b>Payment:</b> ${escapeInvoice(s.payment||'Cash')}</p><table><thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead><tbody><tr><td>${escapeInvoice(s.product)}</td><td>${s.qty}</td><td>${formatCurrency(s.unitPrice)}</td><td>${formatCurrency(s.subtotal)}</td></tr></tbody></table><p>Subtotal: ${formatCurrency(s.subtotal)}</p><p>Discount: ${formatCurrency(s.discount||0)}</p><p class="total">TOTAL: ${formatCurrency(s.total)}</p><div class="thanks">Thank you for shopping with Eddmobi Electronics.</div><script>window.onload=()=>window.print()<\\/script></body></html>`);
+  w.document.close();
+}
+function clearReceipt() {
+  document.getElementById('receipt').textContent = 'Complete a sale to generate a receipt and invoice here.';
+  lastInvoiceSale = null;
 }
 
 function renderRecentSales(snapshot) {
@@ -1360,6 +1472,8 @@ function addPurchase() {
   const unitCost = parseFloat(document.getElementById('purchasePrice').value);
   const supplier = document.getElementById('purchaseSupplier').value.trim() || 'N/A';
   const note = document.getElementById('purchaseNote').value.trim();
+  const receiptFile = document.getElementById('purchaseReceipt').files[0];
+  if (receiptFile && receiptFile.size > 700 * 1024) { showAlert('Receipt must be under 700 KB in this version. Use a smaller file.', 'warning'); return; }
 
   if (!productId) { showAlert('Select product for purchase', 'danger'); return; }
   if (isNaN(qty) || qty < 1) { showAlert('Enter valid purchase quantity', 'danger'); return; }
@@ -1367,7 +1481,13 @@ function addPurchase() {
 
   const productRef = firestoredb.collection('products').doc(productId);
 
-  productRef.get().then(doc => {
+  const readReceipt = receiptFile ? new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({receiptName: receiptFile.name, receiptType: receiptFile.type || 'application/octet-stream', receiptData: reader.result});
+    reader.onerror = () => reject(new Error('Could not read receipt file'));
+    reader.readAsDataURL(receiptFile);
+  }) : Promise.resolve({});
+  Promise.all([productRef.get(), readReceipt]).then(([doc, receiptInfo]) => {
     if (!doc.exists) { throw new Error('Product not found'); }
 
     const product = doc.data();
@@ -1382,6 +1502,7 @@ function addPurchase() {
       note,
       orgId: currentUser.orgId,
       recordedBy: currentUser.user,
+      ...receiptInfo,
       date: firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -1398,7 +1519,7 @@ function addPurchase() {
         });
     });
   }).then(result => {
-    clearForm(['purchaseQty', 'purchasePrice', 'purchaseSupplier', 'purchaseNote']);
+    clearForm(['purchaseQty', 'purchasePrice', 'purchaseSupplier', 'purchaseNote']); document.getElementById('purchaseReceipt').value = '';
     document.getElementById('purchaseProductSelect').value = '';
     updateDashboard();
     if (result && result.logSaved === false) {
@@ -1413,7 +1534,7 @@ function renderPurchases(snapshot) {
   const table = document.getElementById('purchasesTable');
   if (!table) return;
 
-  let html = `<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th></tr>`;
+  let html = `<tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th><th>Supplier</th><th>Recorded By</th><th>Receipt</th></tr>`;
 
   if (snapshot.size === 0) {
     html += `<tr><td colspan="7" style="text-align:center;">No purchases yet</td></tr>`;
@@ -1421,7 +1542,7 @@ function renderPurchases(snapshot) {
     snapshot.forEach(doc => {
       const p = doc.data();
       const dateStr = p.date ? formatDate(p.date.toDate ? p.date.toDate() : p.date) : 'N/A';
-      html += `<tr><td>${dateStr}</td><td>${p.product || 'N/A'}</td><td>${p.qty || 0}</td><td>${formatCurrency(p.unitCost)}</td><td>${formatCurrency(p.totalCost)}</td><td>${p.supplier || 'N/A'}</td><td>${p.recordedBy || 'N/A'}</td></tr>`;
+      html += `<tr><td>${dateStr}</td><td>${p.product || 'N/A'}</td><td>${p.qty || 0}</td><td>${formatCurrency(p.unitCost)}</td><td>${formatCurrency(p.totalCost)}</td><td>${p.supplier || 'N/A'}</td><td>${p.recordedBy || 'N/A'}</td><td>${p.receiptData ? `<a href="${p.receiptData}" download="${p.receiptName || 'supplier-receipt'}">View / Download</a>` : '—'}</td></tr>`;
     });
   }
 
@@ -1730,6 +1851,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
 
 
