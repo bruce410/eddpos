@@ -46,6 +46,14 @@
       width: 100%; padding: 10px; border: 1px solid #ddd;
       border-radius: 5px; font-size: 14px;
     }
+    .password-wrap { position: relative; width: 100%; }
+    .password-wrap input { padding-right: 76px; }
+    .password-toggle {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      border: 0; background: transparent; color: #5365c5; cursor: pointer;
+      font-size: 12px; font-weight: 700; padding: 6px;
+    }
+    .password-toggle:focus { outline: 2px solid #667eea; border-radius: 4px; }
     .login-group input:focus {
       outline: none; border-color: #667eea;
       box-shadow: 0 0 5px rgba(102, 126, 234, 0.2);
@@ -229,6 +237,18 @@
     .muted{color:#718096;padding:12px}.receipt-upload{display:grid;gap:5px;padding:10px;border:1px dashed #cbd5e1;border-radius:10px;font-size:12px}.receipt-upload label{font-weight:700;color:#34445f}
     @media(max-width:700px){.section{padding:14px}.tab-btn{padding:9px 11px;font-size:12px}.stat-card{padding:15px}.stat-card .value{font-size:20px}table{display:block;overflow-x:auto;white-space:nowrap}.section-title-row{align-items:flex-start}}
 
+
+    #subscriptionGate input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px}
+    #subscriptionGate button{padding:12px 16px;margin:5px 5px 0 0}
+    .profit-chart-wrap{background:#fff;border:1px solid #e5eaf2;border-radius:16px;padding:18px;margin:16px 0;box-shadow:0 5px 18px rgba(15,35,70,.06)}
+    .profit-chart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .profit-chart-head h3{margin:0;color:#172b4d}
+    .profit-chart-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .profit-chart-controls select{padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;font:inherit}
+    #profitTrendCanvas{display:block;width:100%;height:310px}
+    .profit-chart-summary{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+    .profit-chart-summary span{background:#f1f6ff;border-radius:9px;padding:9px 12px;color:#24436e;font-size:14px}
+    @media(max-width:600px){.profit-chart-wrap{padding:12px}#profitTrendCanvas{height:260px}}
   </style>
 <base target="_blank">
 </head> 
@@ -254,7 +274,10 @@
       <input id="loginEmail" type="email" placeholder="Email address" autocomplete="email">
     </div>
     <div class="login-group">
-      <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+      <div class="password-wrap">
+        <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+        <button class="password-toggle" type="button" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password">Show</button>
+      </div>
     </div>
     <button class="login-btn" onclick="login()">Login</button>
     <div class="toggle-auth">
@@ -268,6 +291,7 @@
   <!-- REGISTER -->
   <div id="Register" style="display:none;">
     <h3>Register Your Business</h3>
+    <p style="margin-bottom:14px;color:#667085">Create an account and get 30 days free. Then KSh 100 per month.</p>
     <div class="login-group">
       <input id="bizName" placeholder="Business Name">
     </div>
@@ -275,7 +299,10 @@
       <input id="bizEmail" type="email" placeholder="Admin Email">
     </div>
     <div class="login-group">
-      <input id="bizPassword" type="password" placeholder="Password (min 6 chars)">
+      <div class="password-wrap">
+        <input id="bizPassword" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password">
+        <button class="password-toggle" type="button" onclick="togglePasswordVisibility('bizPassword', this)" aria-label="Show password">Show</button>
+      </div>
     </div>
     <button class="login-btn" onclick="registerBusiness()">Create Account</button>
     <div class="toggle-auth">
@@ -285,6 +312,21 @@
 
   <!-- APP -->
   <div id="app" style="display:none;">
+    <div id="subscriptionGate" style="display:none;max-width:650px;margin:35px auto;padding:26px;background:#fff;border:2px solid #e5323a;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.12)">
+      <h2 style="color:#142744;margin-bottom:10px">EDDMOBI POS Subscription</h2>
+      <p id="subscriptionMessage" style="margin:10px 0">Your 30-day free trial has ended.</p>
+      <h1 style="color:#1457c5;margin:15px 0">KSh 100 <small style="font-size:15px;color:#667085">/ month</small></h1>
+      <p>Pay using M-Pesa <b>Send Money</b> to:</p>
+      <p style="font-size:24px;font-weight:800;letter-spacing:1px;margin:8px 0">0799290741</p>
+      <p style="font-size:13px;color:#667085">After sending KSh 100, enter the M-Pesa transaction code below. Access will be restored after the payment is checked and your subscription is activated.</p>
+      <div class="form-group" style="margin-top:14px">
+        <input id="mpesaTransactionCode" placeholder="M-Pesa transaction code" autocomplete="off" maxlength="20">
+        <button type="button" onclick="submitSubscriptionPayment()">Submit payment details</button>
+        <button type="button" class="secondary-btn" onclick="logout()">Logout</button>
+      </div>
+      <p id="paymentStatusMessage" style="margin-top:10px;font-weight:600"></p>
+    </div>
+    <div id="appMainContent">
     <div class="top-bar">
       <div class="user-info">
      <span id="currentUserName">User</span>
@@ -337,6 +379,9 @@
       </div>
       <div class="section">
         <h3>Product Stock</h3>
+        <div class="form-group" style="margin:12px 0 16px">
+          <input type="search" id="stockProductSearch" placeholder="Search products by name..." oninput="filterStockTable()" aria-label="Search products by name">
+        </div>
         <table id="stockTable"></table>
       </div>
     </div>
@@ -440,6 +485,23 @@
           <button class="admin-only-btn" onclick="exportToCSV()">Export to CSV</button>
         </div>
       </div>
+      <div class="profit-chart-wrap">
+        <div class="profit-chart-head">
+          <h3>Profit Trends</h3>
+          <div class="profit-chart-controls">
+            <label for="profitTrendPeriod">View trend:</label>
+            <select id="profitTrendPeriod" onchange="loadProfitTrend()">
+              <option value="weekly">Weekly (this week)</option>
+              <option value="monthly" selected>Monthly (this month)</option>
+              <option value="yearly">Yearly (this year)</option>
+            </select>
+            <button class="success" onclick="loadProfitTrend()">Refresh Graph</button>
+          </div>
+        </div>
+        <canvas id="profitTrendCanvas" aria-label="Profit trend chart" role="img"></canvas>
+        <div class="profit-chart-summary" id="profitTrendSummary"><span>Loading profit trend…</span></div>
+        <small style="display:block;color:#64748b;margin-top:10px">Net profit = recorded sales profit minus recorded expenses. The graph uses your saved Eddmobi records.</small>
+      </div>
       <div class="section"><pre id="output"></pre></div>
     </div>
 
@@ -452,7 +514,10 @@
         <div class="form-group">
           <input id="newUsername" placeholder="Display name">
           <input id="newEmail" type="email" placeholder="Staff Email">
-          <input id="newPassword" type="password" placeholder="Temporary Password">
+          <div class="password-wrap">
+            <input id="newPassword" type="password" placeholder="Temporary Password" autocomplete="new-password">
+            <button class="password-toggle" type="button" onclick="togglePasswordVisibility('newPassword', this)" aria-label="Show password">Show</button>
+          </div>
           <select id="newRole"><option value="sales">Sales Staff</option><option value="admin">Admin</option></select>
           <button class="success" onclick="addUser()">Create Staff Account</button>
         </div>
@@ -462,6 +527,7 @@
         <div id="usersList"></div>
       </div>
     </div>
+    </div><!-- end appMainContent -->
   </div>
 </div>
 
@@ -567,6 +633,7 @@ let unsubscribeSales = null;
 let unsubscribePurchases = null;
 let unsubscribeExpenses = null;
 let isInitializing = false;
+let registrationInProgress = false;
 
 // ============= UTILITIES =============
 function showAlert(message, type = 'success') {
@@ -596,6 +663,15 @@ function formatDate(date) {
 }
 
 // ============= NAVIGATION =============
+function togglePasswordVisibility(inputId, button) {
+  const field = document.getElementById(inputId);
+  if (!field) return;
+  const showing = field.type === 'password';
+  field.type = showing ? 'text' : 'password';
+  button.textContent = showing ? 'Hide' : 'Show';
+  button.setAttribute('aria-label', showing ? 'Hide password' : 'Show password');
+}
+
 function showLogin() {
   document.getElementById('login').style.display = 'block';
   document.getElementById('Register').style.display = 'none';
@@ -616,62 +692,46 @@ function showApp() {
 
 // ============= REGISTRATION =============
 async function registerBusiness() {
-  debugLog('=== REGISTER STARTED ===');
-
+  if (registrationInProgress) return;
   const name = document.getElementById('bizName').value.trim();
   const email = document.getElementById('bizEmail').value.trim().toLowerCase();
   const password = document.getElementById('bizPassword').value;
-
-  if (!name || !email || !password) {
-    showAlert('Please fill all fields', 'danger');
-    return;
-  }
-
-  if (password.length < 6) {
-    showAlert('Password must be at least 6 characters', 'warning');
-    return;
-  }
-
+  if (!name || !email || !password) { showAlert('Please fill all fields', 'danger'); return; }
+  if (password.length < 6) { showAlert('Password must be at least 6 characters', 'warning'); return; }
+  registrationInProgress = true;
   try {
-
-    // CREATE AUTH USER
     const cred = await auth.createUserWithEmailAndPassword(email, password);
-
     const uid = cred.user.uid;
-
-    debugLog('Auth account created: ' + uid, 'success');
-
-    // CREATE ORGANIZATION
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const orgRef = firestoredb.collection('organizations').doc();
-
     await orgRef.set({
-      name: name,
-      ownerId: uid,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      name, ownerId: uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      trialStartedAt: firebase.firestore.Timestamp.fromDate(now),
+      trialEndsAt: firebase.firestore.Timestamp.fromDate(trialEnd),
+      subscriptionStatus: 'trial', subscriptionFee: 100, subscriptionCurrency: 'KES',
+      paymentPhone: '0799290741'
     });
-
-    debugLog('Organization created', 'success');
-
-    // CREATE USER PROFILE
     await firestoredb.collection('users').doc(uid).set({
-      user: email.split('@')[0],
-      email: email,
-      role: 'admin',
-      orgId: orgRef.id,
+      user: email.split('@')[0], email, role: 'admin', orgId: orgRef.id,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-
-    debugLog('User profile created in Firestore', 'success');
-
-    showAlert('Registration successful!', 'success');
-
-    clearForm(['bizName', 'bizEmail', 'bizPassword']);
-
+    const userDoc = await firestoredb.collection('users').doc(uid).get();
+    if (!userDoc.exists) throw new Error('Your account was created, but its user profile could not be loaded. Contact support before registering again.');
+    clearForm(['bizName','bizEmail','bizPassword']);
+    registrationInProgress = false;
+    await initializeUserSession(cred.user, userDoc);
+    showAlert('Business registered successfully. Your 30-day free trial has started.', 'success');
   } catch (err) {
-
-    debugLog('REGISTER ERROR: ' + err.message, 'error');
-
-    showAlert(err.message, 'danger');
+    registrationInProgress = false;
+    debugLog('REGISTER ERROR: ' + (err.code || '') + ' ' + err.message, 'error');
+    let msg = err.message;
+    if (err.code === 'auth/email-already-in-use') msg = 'This email already has an account. Please log in instead.';
+    if (err.code === 'auth/weak-password') msg = 'Choose a stronger password with at least 6 characters.';
+    if (err.code === 'auth/invalid-email') msg = 'Enter a valid email address.';
+    if (err.code === 'permission-denied') msg = 'Firebase Firestore rules blocked business registration. Update the rules for organizations and users, then try again.';
+    showAlert(msg, 'danger');
   }
 }
 
@@ -747,61 +807,95 @@ function logout() {
 }
 
 // ============= AUTH STATE LISTENER =============
-// THIS IS THE SINGLE SOURCE OF TRUTH FOR AUTH STATE
+async function initializeUserSession(user, knownUserDoc) {
+  if (isInitializing) return;
+  isInitializing = true;
+  try {
+    const userDoc = knownUserDoc || await firestoredb.collection('users').doc(user.uid).get();
+    if (!userDoc.exists) throw new Error('Your login exists, but the business profile is missing. Contact the business administrator.');
+    const userData = userDoc.data();
+    if (!userData.orgId) throw new Error('Your account is not linked to a business. Contact the administrator.');
+    const orgDoc = await firestoredb.collection('organizations').doc(userData.orgId).get();
+    if (!orgDoc.exists) throw new Error('Business record not found. Contact support.');
+    currentUser = { id: userDoc.id, ...userData };
+    currentOrg = { id: orgDoc.id, ...orgDoc.data() };
+    document.getElementById('orgName').textContent = '🏪 ' + (currentOrg.name || 'Business');
+    showApp();
+    applyRoleBasedUI();
+    setupRealtimeListeners();
+    updateDashboard();
+    updateSubscriptionGate();
+  } catch (err) {
+    debugLog('AUTH INITIALIZATION ERROR: ' + err.message, 'error');
+    showAlert(err.message, 'danger');
+    if (err.code === 'permission-denied') showAlert('Firestore permission denied. Check your Firebase security rules.', 'danger');
+    if (!registrationInProgress) await auth.signOut().catch(()=>{});
+  } finally { isInitializing = false; }
+}
+
 auth.onAuthStateChanged(user => {
-  debugLog('=== onAuthStateChanged === User: ' + (user ? user.email : 'null'));
-
-  if (isInitializing) {
-    debugLog('Already initializing, skipping...', 'warn');
-    return;
-  }
-
+  if (registrationInProgress) return;
   if (user) {
-    isInitializing = true;
-    debugLog('Loading user profile from Firestore...');
-
-    firestoredb.collection('users').doc(user.uid).get()
-      .then(userDoc => {
-        if (!userDoc.exists) {
-          debugLog('ERROR: User profile NOT FOUND in Firestore!', 'error');
-          debugLog('This means: auth account exists but Firestore doc is missing', 'error');
-          debugLog('Try registering again or check Firestore rules', 'error');
-          throw new Error('Profile not found. Please re-register.');
-        }
-        const userData = userDoc.data();
-        debugLog('Profile loaded: ' + JSON.stringify(userData), 'success');
-        currentUser = { id: userDoc.id, ...userData };
-
-        return firestoredb.collection('organizations').doc(userData.orgId).get();
-      })
-      .then(orgDoc => {
-        if (orgDoc && orgDoc.exists) {
-          currentOrg = { id: orgDoc.id, ...orgDoc.data() };
-          document.getElementById('orgName').textContent = '🏪 ' + currentOrg.name;
-          debugLog('Org loaded: ' + currentOrg.name, 'success');
-        }
-
-        showApp();
-        applyRoleBasedUI();
-        setupRealtimeListeners();
-        updateDashboard();
-        showAlert(`Welcome, ${currentUser.user}! (${currentUser.role.toUpperCase()})`, 'success');
-        isInitializing = false;
-      })
-      .catch(err => {
-        isInitializing = false;
-        debugLog('Auth state ERROR: ' + err.message, 'error');
-        showAlert(err.message, 'danger');
-        auth.signOut();
-      });
+    initializeUserSession(user);
   } else {
-    debugLog('User signed out');
-    cleanupListeners();
-    currentUser = null;
-    currentOrg = null;
+    cleanupListeners(); currentUser = null; currentOrg = null;
     showLogin();
   }
 });
+
+// ============= SUBSCRIPTION / MANUAL M-PESA =============
+function toDateSafe(value) {
+  if (!value) return null;
+  if (value.toDate) return value.toDate();
+  const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d;
+}
+function updateSubscriptionGate() {
+  const gate = document.getElementById('subscriptionGate');
+  const main = document.getElementById('appMainContent');
+  if (!gate || !main || !currentOrg) return;
+  const status = String(currentOrg.subscriptionStatus || 'trial').toLowerCase();
+  const trialEnd = toDateSafe(currentOrg.trialEndsAt);
+  const paidEnd = toDateSafe(currentOrg.subscriptionEndsAt);
+  const now = new Date();
+  const hasSubscriptionSetup = !!(currentOrg.subscriptionStatus || currentOrg.trialEndsAt || currentOrg.subscriptionEndsAt);
+  const accessAllowed = !hasSubscriptionSetup || (status === 'active' && (!paidEnd || paidEnd >= now)) || (status === 'trial' && trialEnd && trialEnd >= now);
+  gate.style.display = accessAllowed ? 'none' : 'block';
+  main.style.display = accessAllowed ? 'block' : 'none';
+  if (!accessAllowed) {
+    const message = status === 'pending' ? 'Your payment details have been submitted and are awaiting confirmation.' : 'Your 30-day free trial has ended or your subscription has expired. Pay KSh 100 to continue using EDDMOBI POS.';
+    document.getElementById('subscriptionMessage').textContent = message;
+    const statusEl = document.getElementById('paymentStatusMessage');
+    if (statusEl && status === 'pending') statusEl.textContent = 'Payment submitted — awaiting manual confirmation.';
+  }
+}
+
+async function submitSubscriptionPayment() {
+  if (!currentUser || !currentOrg) return;
+  const code = document.getElementById('mpesaTransactionCode').value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{8,20}$/.test(code)) {
+    showAlert('Enter a valid M-Pesa transaction code (8–20 letters/numbers).', 'warning'); return;
+  }
+  try {
+    await firestoredb.collection('subscriptionPayments').add({
+      orgId: currentOrg.id, ownerUid: currentOrg.ownerId || currentUser.id,
+      amount: 100, currency: 'KES', method: 'M-Pesa Send Money',
+      recipient: '0799290741', transactionCode: code,
+      status: 'pending', submittedBy: currentUser.id,
+      submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await firestoredb.collection('organizations').doc(currentOrg.id).update({
+      subscriptionStatus: 'pending', lastPaymentReference: code,
+      lastPaymentSubmittedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    currentOrg.subscriptionStatus = 'pending';
+    document.getElementById('paymentStatusMessage').textContent = 'Payment details submitted. Access will be restored after the payment is verified.';
+    document.getElementById('mpesaTransactionCode').value = '';
+    updateSubscriptionGate();
+  } catch (err) {
+    debugLog('SUBSCRIPTION PAYMENT SUBMISSION ERROR: ' + err.message, 'error');
+    showAlert('Could not submit payment details. Check Firestore rules for subscriptionPayments and organizations. ' + err.message, 'danger');
+  }
+}
 
 // ============= LISTENERS =============
 function setupRealtimeListeners() {
@@ -914,6 +1008,7 @@ function switchTab(tabName, btnElement) {
 
   if (tabName === 'dailySales') loadDailySales();
   if (tabName === 'dashboard') updateDashboard();
+  if (tabName === 'reports') loadProfitTrend();
   if (tabName === 'purchases' && hasPermission('canViewPurchases')) {
     filterPurchaseProducts();
     if (document.getElementById('purchasesTable').innerHTML.trim() === '') {
@@ -1099,73 +1194,54 @@ function deleteProduct(productId, productName) {
 let allProducts = [];
 
 function renderProducts(snapshot) {
-  const stockTable = document.getElementById('stockTable');
-  const productSelect = document.getElementById('productSelect');
-  const purchaseProductSelect = document.getElementById('purchaseProductSelect');
-
   allProducts = [];
-
-  let tableHTML = `
-  <tr>
-    <th>Name</th>
-    <th>Sell</th>
-    <th>Stock</th>
-  </tr>`;
-
-  let selectHTML = '';
-
   snapshot.forEach(doc => {
     const p = doc.data();
-
-    allProducts.push({
-      id: doc.id,
-      name: p.name,
-      stock: p.stock || 0,
+    allProducts.push({ id: doc.id, name: p.name || 'Unnamed product', stock: Number(p.stock || 0),
       lowStockThreshold: Number.isFinite(p.lowStockThreshold) ? p.lowStockThreshold : 5,
-      buy: p.buy || 0,
-      sell: p.sell || 0
-    });
-
-    tableHTML += `
-    <tr>
-      <td>${p.name}</td>
-      <td>${formatCurrency(p.sell)}</td>
-      <td>${p.stock}</td>
-    </tr>`;
-
-    selectHTML += `
-    <option value="${doc.id}">
-      ${p.name} (Stock: ${p.stock})
-    </option>`;
+      buy: Number(p.buy || 0), sell: Number(p.sell || 0) });
   });
-
-  stockTable.innerHTML = tableHTML;
+  filterStockTable();
   renderStockAlerts(allProducts);
-  productSelect.innerHTML = `<option value="">Select Product</option>` + selectHTML;
-  if (purchaseProductSelect) {
-    purchaseProductSelect.innerHTML = `<option value="">Select Product</option>` + selectHTML;
-  }
-}
- function filterProducts() {
-  const search = document
-    .getElementById('productSearch')
-    .value
-    .toLowerCase();
-
+  const selectHTML = allProducts.map(p => `<option value="${p.id}">${escapeInvoice(p.name)} (Stock: ${p.stock})</option>`).join('');
   const productSelect = document.getElementById('productSelect');
+  const purchaseProductSelect = document.getElementById('purchaseProductSelect');
+  if (productSelect) productSelect.innerHTML = '<option value="">Select Product</option>' + selectHTML;
+  if (purchaseProductSelect) purchaseProductSelect.innerHTML = '<option value="">Select Product</option>' + selectHTML;
+  // Re-apply the sales picker filter if its search box has text.
+  if (document.getElementById('productSearch')?.value) filterProducts();
+  if (document.getElementById('purchaseProductSearch')?.value) filterPurchaseProducts();
+}
 
-  let html = '<option value="">Select Product</option>';
+function filterStockTable() {
+  const input = document.getElementById('stockProductSearch');
+  const query = (input ? input.value : '').trim().toLowerCase();
+  const table = document.getElementById('stockTable');
+  if (!table) return;
+  const perms = currentUser ? (PERMISSIONS[currentUser.role] || PERMISSIONS[ROLES.SALES]) : PERMISSIONS[ROLES.SALES];
+  let html = `<tr><th>Name</th>${perms.canViewBuyingPrice ? '<th>Buy</th>' : ''}<th>Sell</th><th>Stock</th>${perms.canEditProducts || perms.canDeleteProducts ? '<th>Actions</th>' : ''}</tr>`;
+  const rows = allProducts.filter(p => p.name.toLowerCase().includes(query));
+  if (!rows.length) {
+    const colspan = 3 + (perms.canViewBuyingPrice ? 1 : 0) + (perms.canEditProducts || perms.canDeleteProducts ? 1 : 0);
+    html += `<tr><td colspan="${colspan}" style="text-align:center;padding:18px">${query ? 'No products match your search.' : 'No products yet.'}</td></tr>`;
+  } else {
+    rows.forEach(p => {
+      const safeName = escapeInvoice(p.name);
+      html += `<tr><td>${safeName}</td>${perms.canViewBuyingPrice ? `<td>${formatCurrency(p.buy)}</td>` : ''}<td>${formatCurrency(p.sell)}</td><td>${p.stock}</td>${perms.canEditProducts || perms.canDeleteProducts ? `<td>${perms.canEditProducts ? `<button class="action-btn edit-btn" onclick="editProduct('${p.id}', decodeURIComponent('${encodeURIComponent(p.name)}'), ${p.buy}, ${p.sell}, ${p.stock})">Edit</button>` : ''}${perms.canDeleteProducts ? `<button class="action-btn delete-btn" onclick="deleteProduct('${p.id}', decodeURIComponent('${encodeURIComponent(p.name)}'))">Delete</button>` : ''}</td>` : ''}</tr>`;
+    });
+  }
+  table.innerHTML = html;
+}
 
-  allProducts.forEach(product => {
-    if (product.name.toLowerCase().includes(search)) {
-      html += `
-      <option value="${product.id}">
-        ${product.name} (Stock: ${product.stock})
-      </option>`;
-    }
-  });
-
-  productSelect.innerHTML = html;
+function filterProducts() {
+  const input = document.getElementById('productSearch');
+  const query = (input ? input.value : '').trim().toLowerCase();
+  const select = document.getElementById('productSelect');
+  if (!select) return;
+  const current = select.value;
+  const matches = allProducts.filter(p => p.name.toLowerCase().includes(query));
+  select.innerHTML = '<option value="">Select Product</option>' + matches.map(p => `<option value="${p.id}">${escapeInvoice(p.name)} (Stock: ${p.stock})</option>`).join('');
+  if (matches.some(p => p.id === current)) select.value = current;
 }
 
 function filterPurchaseProducts() {
@@ -1690,6 +1766,93 @@ function deleteExpense(expenseId) {
   };
   document.getElementById('confirmMessage').textContent = 'Delete this expense?';
   document.getElementById('confirmModal').classList.add('active');}
+
+// ============= PROFIT TREND GRAPH =============
+function loadProfitTrend() {
+  const canvas = document.getElementById('profitTrendCanvas');
+  const summary = document.getElementById('profitTrendSummary');
+  if (!canvas || !summary) return;
+  if (!currentUser || !currentUser.orgId) {
+    summary.innerHTML = '<span>Sign in to view profit trends.</span>';
+    drawProfitTrend([], []); return;
+  }
+  if (!hasPermission('canViewReports')) {
+    summary.innerHTML = '<span>You do not have permission to view reports.</span>';
+    drawProfitTrend([], []); return;
+  }
+  summary.innerHTML = '<span>Loading saved sales and expenses…</span>';
+  const orgId = currentUser.orgId;
+  Promise.all([
+    firestoredb.collection('sales').where('orgId', '==', orgId).get(),
+    firestoredb.collection('expenses').where('orgId', '==', orgId).get()
+  ]).then(([salesSnapshot, expensesSnapshot]) => {
+    const now = new Date();
+    const mode = (document.getElementById('profitTrendPeriod') || {}).value || 'monthly';
+    let periods = [];
+    if (mode === 'weekly') {
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const day = (monday.getDay() + 6) % 7;
+      monday.setDate(monday.getDate() - day);
+      for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); periods.push({start:d,end:new Date(d.getFullYear(),d.getMonth(),d.getDate()+1),label:d.toLocaleDateString('en-KE',{weekday:'short'})}); }
+    } else if (mode === 'yearly') {
+      for (let i = 0; i < 12; i++) { const start = new Date(now.getFullYear(), i, 1); periods.push({start,end:new Date(now.getFullYear(),i+1,1),label:start.toLocaleDateString('en-KE',{month:'short'})}); }
+    } else {
+      const days = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+      for (let i = 1; i <= days; i++) { const start = new Date(now.getFullYear(),now.getMonth(),i); periods.push({start,end:new Date(now.getFullYear(),now.getMonth(),i+1),label:String(i)}); }
+    }
+    periods.forEach(p => { p.gross = 0; p.expenses = 0; p.sales = 0; });
+    const asDate = value => value ? new Date(value.toDate ? value.toDate() : value) : null;
+    salesSnapshot.forEach(doc => {
+      const sale = doc.data(), date = asDate(sale.date);
+      if (!date || isNaN(date.getTime())) return;
+      const period = periods.find(p => date >= p.start && date < p.end);
+      if (period) { period.gross += Number(sale.profit) || 0; period.sales += Number(sale.total) || 0; }
+    });
+    expensesSnapshot.forEach(doc => {
+      const expense = doc.data(), date = asDate(expense.date);
+      if (!date || isNaN(date.getTime())) return;
+      const period = periods.find(p => date >= p.start && date < p.end);
+      if (period) period.expenses += Number(expense.amount) || 0;
+    });
+    periods.forEach(p => { p.net = p.gross - p.expenses; });
+    drawProfitTrend(periods, periods.map(p => p.net));
+    const gross = periods.reduce((sum,p)=>sum+p.gross,0);
+    const costs = periods.reduce((sum,p)=>sum+p.expenses,0);
+    const net = gross - costs;
+    summary.innerHTML = `<span>Gross profit: <b>${formatCurrency(gross)}</b></span><span>Expenses: <b>${formatCurrency(costs)}</b></span><span>Net profit: <b>${formatCurrency(net)}</b></span>`;
+  }).catch(err => {
+    summary.innerHTML = '<span>Could not load profit trend. Check your connection and try refresh.</span>';
+    console.error('Profit trend error:', err);
+  });
+}
+
+function drawProfitTrend(periods, values) {
+  const canvas = document.getElementById('profitTrendCanvas');
+  if (!canvas) return;
+  const width = Math.max(300, canvas.clientWidth || 700), height = Math.max(240, canvas.clientHeight || 310);
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = width * ratio; canvas.height = height * ratio;
+  const ctx = canvas.getContext('2d'); ctx.setTransform(ratio,0,0,ratio,0,0); ctx.clearRect(0,0,width,height);
+  const pad = {left:66,right:18,top:22,bottom:42}, plotW = width-pad.left-pad.right, plotH=height-pad.top-pad.bottom;
+  ctx.font = '11px Segoe UI, Arial'; ctx.fillStyle='#64748b'; ctx.strokeStyle='#e7edf5'; ctx.lineWidth=1;
+  if (!periods || !periods.length) { ctx.fillText('No profit data to display yet.', pad.left, height/2); return; }
+  const all = values.concat([0]); let min = Math.min(...all), max = Math.max(...all);
+  if (min === max) { min -= 100; max += 100; }
+  const span = max-min; min -= span*.12; max += span*.12;
+  const y = v => pad.top + (max-v)/(max-min)*plotH;
+  for(let i=0;i<=4;i++) { const val=min+(max-min)*i/4, yy=y(val); ctx.beginPath();ctx.moveTo(pad.left,yy);ctx.lineTo(width-pad.right,yy);ctx.stroke();ctx.fillStyle='#64748b';ctx.textAlign='right';ctx.fillText(Math.round(val).toLocaleString('en-KE'),pad.left-9,yy+4); }
+  const zeroY=y(0); ctx.strokeStyle='#9aa9bd';ctx.beginPath();ctx.moveTo(pad.left,zeroY);ctx.lineTo(width-pad.right,zeroY);ctx.stroke();
+  const step=periods.length>1?plotW/(periods.length-1):plotW/2;
+  ctx.beginPath();
+  values.forEach((v,i)=>{const xx=pad.left+(periods.length>1?i*step:plotW/2), yy=y(v); if(i===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);});
+  ctx.strokeStyle='#1769d2';ctx.lineWidth=3;ctx.lineJoin='round';ctx.stroke();
+  values.forEach((v,i)=>{const xx=pad.left+(periods.length>1?i*step:plotW/2), yy=y(v);ctx.beginPath();ctx.arc(xx,yy,3.5,0,Math.PI*2);ctx.fillStyle=v<0?'#e5323a':'#1769d2';ctx.fill();});
+  const labelEvery=Math.max(1,Math.ceil(periods.length/(width<480?7:12)));
+  ctx.fillStyle='#64748b';ctx.textAlign='center';
+  periods.forEach((p,i)=>{if(i%labelEvery===0||i===periods.length-1){const xx=pad.left+(periods.length>1?i*step:plotW/2);ctx.fillText(p.label,xx,height-16);}});
+  ctx.save();ctx.translate(15,pad.top+plotH/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillStyle='#334155';ctx.font='12px Segoe UI, Arial';ctx.fillText('Net profit (KES)',0,0);ctx.restore();
+}
+window.addEventListener('resize', () => { if (document.getElementById('profitTrendCanvas')) loadProfitTrend(); });
 
 // ============= REPORTS =============
 function generateDailyReport() {
