@@ -280,9 +280,8 @@
       </div>
     </div>
     <button class="login-btn" onclick="login()">Login</button>
-    <div class="toggle-auth" style="margin-top:10px;">
-      <button type="button" class="password-reset-link" onclick="forgotPassword()" style="background:none;border:0;color:#1769aa;text-decoration:underline;cursor:pointer;font:inherit;padding:6px 10px;">Forgot password? Send reset email</button>
-      <p style="font-size:12px;color:#667085;margin:4px 0 0;">Enter your account email above first. We will send you a secure reset link.</p>
+    <div class="toggle-auth">
+      <p><a onclick="forgotPassword()">Forgot password?</a></p>
     </div>
     <div class="toggle-auth">
       <p>Don't have an account? <a onclick="showRegister()">Register Business</a></p>
@@ -323,6 +322,7 @@
       <div class="form-group" style="margin-top:14px">
         <input id="mpesaTransactionCode" placeholder="M-Pesa transaction code" autocomplete="off" maxlength="20">
         <button type="button" onclick="submitSubscriptionPayment()">Submit payment details</button>
+        <button type="button" class="secondary-btn" onclick="refreshSubscriptionStatus()">Check payment status</button>
         <button type="button" class="secondary-btn" onclick="logout()">Logout</button>
       </div>
       <p id="paymentStatusMessage" style="margin-top:10px;font-weight:600"></p>
@@ -347,6 +347,7 @@
       <button class="tab-btn" onclick="switchTab('expenses', this)">Expenses</button>
       <button class="tab-btn" onclick="switchTab('reports', this)">Reports</button>
       <button class="tab-btn admin-only" onclick="switchTab('users', this)">👥 Users</button>
+      <button class="tab-btn admin-only" onclick="switchTab('subscription', this)">Subscription</button>
     </div>
 
     <div id="dashboard" class="tab-content active">
@@ -528,6 +529,37 @@
         <div id="usersList"></div>
       </div>
     </div>
+
+    <div id="subscription" class="tab-content">
+      <div class="section" style="max-width:760px;margin:0 auto">
+        <h3>EDDMOBI POS Monthly Plan</h3>
+        <p style="color:#667085;margin:8px 0 18px">One simple plan with access to all current POS features.</p>
+        <div style="border:1px solid #dbe4f0;border-radius:14px;padding:20px;margin-bottom:18px;background:#f8fbff">
+          <div style="font-size:14px;color:#526075;font-weight:700">MONTHLY SUBSCRIPTION</div>
+          <div style="font-size:34px;font-weight:800;color:#1457c5;margin:8px 0">KSh 100 <span style="font-size:15px;color:#667085;font-weight:500">/ month</span></div>
+          <div style="color:#334155">30-day free trial for every new business account.</div>
+        </div>
+        <div style="padding:14px 16px;background:#f8fafc;border-radius:10px;margin-bottom:18px">
+          <div style="font-weight:700;margin-bottom:7px">Your subscription status</div>
+          <div id="billingPlanStatus" style="font-size:18px;font-weight:800;color:#1457c5">Loading status...</div>
+          <div id="billingValidity" style="margin-top:6px;color:#526075"></div>
+          <div id="billingNextStep" style="margin-top:8px;color:#526075;font-size:14px"></div>
+        </div>
+        <h4 style="margin:12px 0 8px">How to pay</h4>
+        <ol style="padding-left:22px;line-height:1.8;color:#334155">
+          <li>Open M-Pesa and choose <b>Send Money</b>.</li>
+          <li>Send <b>KSh 100</b> to <b>0799290741</b>.</li>
+          <li>Enter the M-Pesa transaction code below and submit it.</li>
+        </ol>
+        <div class="form-group" style="margin-top:14px">
+          <input id="billingMpesaCode" placeholder="M-Pesa transaction code" autocomplete="off" maxlength="20">
+          <button type="button" onclick="submitSubscriptionPayment('billingMpesaCode','billingPaymentStatus')">Submit renewal payment</button>
+          <button type="button" class="secondary-btn" onclick="refreshSubscriptionStatus()">Check payment status</button>
+        </div>
+        <p id="billingPaymentStatus" style="margin-top:10px;font-weight:600"></p>
+        <p style="font-size:12px;color:#667085;margin-top:16px">Your transaction code is checked by the EDDMOBI POS administrator. Subscription access is activated after payment verification.</p>
+      </div>
+    </div>
     </div><!-- end appMainContent -->
   </div>
 </div>
@@ -612,7 +644,7 @@ const PERMISSIONS = {
     canAddExpenses: true, canDeleteExpenses: true, canDeleteSales: true,
     canViewReports: true, canExportCSV: true, canViewAnnualReport: true,
     canManageUsers: true, canViewBuyingPrice: true,
-    tabs: ['dashboard', 'products', 'sales', 'dailySales', 'purchases', 'expenses', 'reports', 'users']
+    tabs: ['dashboard', 'products', 'sales', 'dailySales', 'purchases', 'expenses', 'reports', 'users', 'subscription']
   },
   [ROLES.SALES]: {
     canAddProducts: false, canEditProducts: false, canDeleteProducts: false,
@@ -765,73 +797,33 @@ function login() {
     });
 }
 
-async function forgotPassword() {
-  const emailInput = document.getElementById('loginEmail');
-  const email = emailInput.value.trim().toLowerCase();
+function forgotPassword() {
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
 
   if (!email) {
-    showAlert('Please enter the email address registered with EDDMOBI POS, then tap Forgot password again.', 'warning');
-    emailInput.focus();
+    showAlert('Enter your email address first, then click Forgot password.', 'warning');
+    document.getElementById('loginEmail').focus();
     return;
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showAlert('Please enter a valid email address.', 'danger');
-    emailInput.focus();
-    return;
-  }
+  showAlert('Sending password reset email...', 'warning');
 
-  const resetButton = document.querySelector('.password-reset-link');
-  if (resetButton) {
-    resetButton.disabled = true;
-    resetButton.textContent = 'Sending reset email...';
-    resetButton.style.opacity = '0.6';
-  }
-
-  try {
-    debugLog('Requesting Firebase password reset for: ' + email);
-
-    // Firebase sends the secure password-reset link using the project's
-    // configured Email/Password provider and email action template.
-    await auth.sendPasswordResetEmail(email);
-
-    showAlert('If an account exists for ' + email + ', Firebase has sent a password-reset link. Check your inbox and spam folder, then follow the link to choose a new password.', 'success');
-    debugLog('Password reset request accepted by Firebase', 'success');
-  } catch (err) {
-    debugLog('PASSWORD RESET ERROR: ' + err.code + ' | ' + err.message, 'error');
-    let message = 'We could not send the reset email. Please try again.';
-    switch (err.code) {
-      case 'auth/invalid-email':
-        message = 'That email address is not valid. Check it and try again.';
-        break;
-      case 'auth/user-not-found':
-        message = 'No EDDMOBI POS account was found for that email address. Check the spelling or register a new business.';
-        break;
-      case 'auth/operation-not-allowed':
-        message = 'Password reset is not enabled yet. In Firebase Console, enable Email/Password under Authentication → Sign-in method.';
-        break;
-      case 'auth/unauthorized-domain':
-        message = 'This website domain is not authorized by Firebase. Add its domain in Firebase Console → Authentication → Settings → Authorized domains.';
-        break;
-      case 'auth/too-many-requests':
-        message = 'Too many reset attempts. Wait a few minutes before trying again.';
-        break;
-      case 'auth/network-request-failed':
-        message = 'Network error. Check your internet connection and try again.';
-        break;
-      case 'auth/invalid-continue-uri':
-      case 'auth/missing-continue-uri':
-        message = 'The Firebase password-reset email settings need attention. Check the email action URL settings in Firebase Console.';
-        break;
-    }
-    showAlert(message, 'danger');
-  } finally {
-    if (resetButton) {
-      resetButton.disabled = false;
-      resetButton.textContent = 'Forgot password? Send reset email';
-      resetButton.style.opacity = '1';
-    }
-  }
+  auth.sendPasswordResetEmail(email)
+    .then(() => {
+      showAlert('Password reset email sent. Please check your inbox.', 'success');
+    })
+    .catch(err => {
+      debugLog('PASSWORD RESET ERROR: ' + err.code + ' | ' + err.message, 'error');
+      let message = err.message;
+      if (err.code === 'auth/user-not-found') {
+        message = 'No account found with that email address.';
+      } else if (err.code === 'auth/invalid-email') {
+        message = 'Please enter a valid email address.';
+      } else if (err.code === 'auth/unauthorized-domain') {
+        message = 'Firebase has blocked password reset from this domain. Add this app domain in Firebase Authentication settings.';
+      }
+      showAlert(message, 'danger');
+    });
 }
 
 function logout() {
@@ -890,6 +882,42 @@ function toDateSafe(value) {
   if (value.toDate) return value.toDate();
   const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d;
 }
+function formatSubscriptionDate(value) {
+  const date = toDateSafe(value);
+  return date ? date.toLocaleDateString('en-KE', {day:'numeric', month:'long', year:'numeric'}) : 'Not available';
+}
+
+function renderSubscriptionDetails(status, trialEnd, paidEnd, now) {
+  const statusEl = document.getElementById('billingPlanStatus');
+  const validityEl = document.getElementById('billingValidity');
+  const nextEl = document.getElementById('billingNextStep');
+  if (!statusEl || !validityEl || !nextEl) return;
+
+  const trialValid = !!(trialEnd && trialEnd >= now);
+  const paidValid = !!(paidEnd && paidEnd >= now);
+  if (status === 'pending' && (trialValid || paidValid)) {
+    statusEl.textContent = 'Payment submitted — awaiting confirmation';
+    validityEl.textContent = paidValid ? 'Current paid access is valid through ' + formatSubscriptionDate(paidEnd) + '.' : 'Your free trial remains active through ' + formatSubscriptionDate(trialEnd) + '.';
+    nextEl.textContent = 'You can continue using the POS while your current trial or paid period remains valid.';
+  } else if (status === 'trial' && trialValid) {
+    statusEl.textContent = '30-day free trial active';
+    validityEl.textContent = 'Your free trial ends on ' + formatSubscriptionDate(trialEnd) + '.';
+    nextEl.textContent = 'Pay KSh 100 before the trial ends to continue using EDDMOBI POS without interruption.';
+  } else if (status === 'active' && (!paidEnd || paidValid)) {
+    statusEl.textContent = 'Monthly subscription active';
+    validityEl.textContent = paidEnd ? 'Your subscription is valid through ' + formatSubscriptionDate(paidEnd) + '.' : 'Your subscription is active.';
+    nextEl.textContent = 'Renew before the end date to keep your POS access uninterrupted.';
+  } else if (status === 'pending') {
+    statusEl.textContent = 'Payment awaiting confirmation';
+    validityEl.textContent = 'Your free trial or previous paid period has ended.';
+    nextEl.textContent = 'Access will resume after the submitted M-Pesa payment is verified and activated.';
+  } else {
+    statusEl.textContent = 'Subscription expired';
+    validityEl.textContent = paidEnd ? 'Last subscription ended on ' + formatSubscriptionDate(paidEnd) + '.' : 'Your 30-day free trial has ended.';
+    nextEl.textContent = 'Send KSh 100 to 0799290741 and submit the M-Pesa transaction code below.';
+  }
+}
+
 function updateSubscriptionGate() {
   const gate = document.getElementById('subscriptionGate');
   const main = document.getElementById('appMainContent');
@@ -899,9 +927,15 @@ function updateSubscriptionGate() {
   const paidEnd = toDateSafe(currentOrg.subscriptionEndsAt);
   const now = new Date();
   const hasSubscriptionSetup = !!(currentOrg.subscriptionStatus || currentOrg.trialEndsAt || currentOrg.subscriptionEndsAt);
-  const accessAllowed = !hasSubscriptionSetup || (status === 'active' && (!paidEnd || paidEnd >= now)) || (status === 'trial' && trialEnd && trialEnd >= now);
+  const trialStillValid = !!(trialEnd && trialEnd >= now);
+  const paidStillValid = !!(paidEnd && paidEnd >= now);
+  const accessAllowed = !hasSubscriptionSetup ||
+    (status === 'active' && (!paidEnd || paidStillValid)) ||
+    (status === 'trial' && trialStillValid) ||
+    (status === 'pending' && (trialStillValid || paidStillValid));
   gate.style.display = accessAllowed ? 'none' : 'block';
   main.style.display = accessAllowed ? 'block' : 'none';
+  renderSubscriptionDetails(status, trialEnd, paidEnd, now);
   if (!accessAllowed) {
     const message = status === 'pending' ? 'Your payment details have been submitted and are awaiting confirmation.' : 'Your 30-day free trial has ended or your subscription has expired. Pay KSh 100 to continue using EDDMOBI POS.';
     document.getElementById('subscriptionMessage').textContent = message;
@@ -910,9 +944,33 @@ function updateSubscriptionGate() {
   }
 }
 
-async function submitSubscriptionPayment() {
+async function refreshSubscriptionStatus() {
+  if (!currentOrg) return;
+  try {
+    const orgDoc = await firestoredb.collection('organizations').doc(currentOrg.id).get();
+    if (!orgDoc.exists) throw new Error('Business subscription record was not found.');
+    currentOrg = { id: orgDoc.id, ...orgDoc.data() };
+    updateSubscriptionGate();
+    const status = String(currentOrg.subscriptionStatus || 'trial').toLowerCase();
+    if (status === 'active') {
+      showAlert('Subscription status refreshed. Your monthly plan is active.', 'success');
+    } else if (status === 'trial') {
+      showAlert('Subscription status refreshed. Your free trial is active.', 'success');
+    } else {
+      showAlert('Subscription status refreshed: ' + status + '. Payment may still be awaiting verification.', 'warning');
+    }
+  } catch (err) {
+    debugLog('SUBSCRIPTION REFRESH ERROR: ' + err.message, 'error');
+    showAlert('Could not refresh subscription status. ' + err.message, 'danger');
+  }
+}
+
+async function submitSubscriptionPayment(inputId = 'mpesaTransactionCode', statusId = 'paymentStatusMessage') {
   if (!currentUser || !currentOrg) return;
-  const code = document.getElementById('mpesaTransactionCode').value.trim().toUpperCase();
+  const inputEl = document.getElementById(inputId);
+  const statusEl = document.getElementById(statusId);
+  if (!inputEl) return;
+  const code = inputEl.value.trim().toUpperCase();
   if (!/^[A-Z0-9]{8,20}$/.test(code)) {
     showAlert('Enter a valid M-Pesa transaction code (8–20 letters/numbers).', 'warning'); return;
   }
@@ -929,8 +987,8 @@ async function submitSubscriptionPayment() {
       lastPaymentSubmittedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     currentOrg.subscriptionStatus = 'pending';
-    document.getElementById('paymentStatusMessage').textContent = 'Payment details submitted. Access will be restored after the payment is verified.';
-    document.getElementById('mpesaTransactionCode').value = '';
+    if (statusEl) statusEl.textContent = 'Payment details submitted. Your payment is awaiting verification.';
+    inputEl.value = '';
     updateSubscriptionGate();
   } catch (err) {
     debugLog('SUBSCRIPTION PAYMENT SUBMISSION ERROR: ' + err.message, 'error');
