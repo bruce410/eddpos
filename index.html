@@ -280,8 +280,9 @@
       </div>
     </div>
     <button class="login-btn" onclick="login()">Login</button>
-    <div class="toggle-auth">
-      <p><a onclick="forgotPassword()">Forgot password?</a></p>
+    <div class="toggle-auth" style="margin-top:10px;">
+      <button type="button" class="password-reset-link" onclick="forgotPassword()" style="background:none;border:0;color:#1769aa;text-decoration:underline;cursor:pointer;font:inherit;padding:6px 10px;">Forgot password? Send reset email</button>
+      <p style="font-size:12px;color:#667085;margin:4px 0 0;">Enter your account email above first. We will send you a secure reset link.</p>
     </div>
     <div class="toggle-auth">
       <p>Don't have an account? <a onclick="showRegister()">Register Business</a></p>
@@ -764,33 +765,73 @@ function login() {
     });
 }
 
-function forgotPassword() {
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+async function forgotPassword() {
+  const emailInput = document.getElementById('loginEmail');
+  const email = emailInput.value.trim().toLowerCase();
 
   if (!email) {
-    showAlert('Enter your email address first, then click Forgot password.', 'warning');
-    document.getElementById('loginEmail').focus();
+    showAlert('Please enter the email address registered with EDDMOBI POS, then tap Forgot password again.', 'warning');
+    emailInput.focus();
     return;
   }
 
-  showAlert('Sending password reset email...', 'warning');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showAlert('Please enter a valid email address.', 'danger');
+    emailInput.focus();
+    return;
+  }
 
-  auth.sendPasswordResetEmail(email)
-    .then(() => {
-      showAlert('Password reset email sent. Please check your inbox.', 'success');
-    })
-    .catch(err => {
-      debugLog('PASSWORD RESET ERROR: ' + err.code + ' | ' + err.message, 'error');
-      let message = err.message;
-      if (err.code === 'auth/user-not-found') {
-        message = 'No account found with that email address.';
-      } else if (err.code === 'auth/invalid-email') {
-        message = 'Please enter a valid email address.';
-      } else if (err.code === 'auth/unauthorized-domain') {
-        message = 'Firebase has blocked password reset from this domain. Add this app domain in Firebase Authentication settings.';
-      }
-      showAlert(message, 'danger');
-    });
+  const resetButton = document.querySelector('.password-reset-link');
+  if (resetButton) {
+    resetButton.disabled = true;
+    resetButton.textContent = 'Sending reset email...';
+    resetButton.style.opacity = '0.6';
+  }
+
+  try {
+    debugLog('Requesting Firebase password reset for: ' + email);
+
+    // Firebase sends the secure password-reset link using the project's
+    // configured Email/Password provider and email action template.
+    await auth.sendPasswordResetEmail(email);
+
+    showAlert('If an account exists for ' + email + ', Firebase has sent a password-reset link. Check your inbox and spam folder, then follow the link to choose a new password.', 'success');
+    debugLog('Password reset request accepted by Firebase', 'success');
+  } catch (err) {
+    debugLog('PASSWORD RESET ERROR: ' + err.code + ' | ' + err.message, 'error');
+    let message = 'We could not send the reset email. Please try again.';
+    switch (err.code) {
+      case 'auth/invalid-email':
+        message = 'That email address is not valid. Check it and try again.';
+        break;
+      case 'auth/user-not-found':
+        message = 'No EDDMOBI POS account was found for that email address. Check the spelling or register a new business.';
+        break;
+      case 'auth/operation-not-allowed':
+        message = 'Password reset is not enabled yet. In Firebase Console, enable Email/Password under Authentication → Sign-in method.';
+        break;
+      case 'auth/unauthorized-domain':
+        message = 'This website domain is not authorized by Firebase. Add its domain in Firebase Console → Authentication → Settings → Authorized domains.';
+        break;
+      case 'auth/too-many-requests':
+        message = 'Too many reset attempts. Wait a few minutes before trying again.';
+        break;
+      case 'auth/network-request-failed':
+        message = 'Network error. Check your internet connection and try again.';
+        break;
+      case 'auth/invalid-continue-uri':
+      case 'auth/missing-continue-uri':
+        message = 'The Firebase password-reset email settings need attention. Check the email action URL settings in Firebase Console.';
+        break;
+    }
+    showAlert(message, 'danger');
+  } finally {
+    if (resetButton) {
+      resetButton.disabled = false;
+      resetButton.textContent = 'Forgot password? Send reset email';
+      resetButton.style.opacity = '1';
+    }
+  }
 }
 
 function logout() {
